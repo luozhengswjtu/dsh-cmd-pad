@@ -675,6 +675,21 @@ await check('C5 z-index 层级：抽屉 30、Toast 90（视觉规范 §4.3）', 
   assert.ok(/\.cmd-pad-toast\{[^}]*z-index:90/.test(css.replace(/\n/g, '')), 'Toast z-index 90')
 })
 
+await check('C7 布局结构：搜索栏在内容区上方（body 纵向排列 + search 不拉伸）', async () => {
+  const cssStart = CLIENT_SRC.indexOf('var CSS = [')
+  const cssEnd = CLIENT_SRC.indexOf('].join', cssStart)
+  const css = CLIENT_SRC.slice(cssStart, cssEnd)
+  const bodyBlock = /\.cmd-pad-drawer-body\{([^}]*)\}/.exec(css)[1]
+  assert.ok(bodyBlock.includes('flex-direction:column'), 'drawer-body 必须纵向排列（搜索栏在上、内容区在下）')
+  const searchBlock = /\.cmd-pad-search\{([^}]*)\}/.exec(css)[1]
+  assert.ok(searchBlock.includes('flex:none'), '搜索栏 flex:none 不拉伸')
+  // DOM 结构：search 先于 layout 出现
+  const s = await bootScene({})
+  const body = s.drawer.children.find((c) => c.className === 'cmd-pad-drawer-body')
+  const classes = body.children.map((c) => c.className)
+  assert.deepStrictEqual(classes, ['cmd-pad-search', 'cmd-pad-layout'], '搜索栏 DOM 顺序在布局之前')
+})
+
 await check('C6 纯逻辑面导出完整（testable 钩子）', async () => {
   const s = await bootScene({})
   const t = s.moduleExports.testable

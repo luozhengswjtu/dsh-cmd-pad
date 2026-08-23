@@ -119,6 +119,7 @@ window.__ModuleLoader__.load({
       '  flex:1;',
       '  min-height:0;',
       '  display:flex;',
+      '  flex-direction:column;', // 搜索栏在上、内容区在下（缺省 row 会导致搜索栏与内容区横排并挤占）
       '  overflow:hidden;',
       '  -webkit-app-region:no-drag;',
       '}',
@@ -148,6 +149,7 @@ window.__ModuleLoader__.load({
       '}',
       // ── T03：搜索栏 ──
       '.cmd-pad-search{',
+      '  flex:none;', // column 布局下不拉伸：搜索栏固定在上方一行
       '  display:flex;',
       '  align-items:center;',
       '  gap:6px;',
