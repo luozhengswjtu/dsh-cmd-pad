@@ -236,6 +236,8 @@ window.__ModuleLoader__.load({
       '  font-size:12px;',
       '  padding:5px 8px;',
       '  border-radius:6px;',
+      // 中性黑浅投影：让搜索框在行内略微浮起、更显眼（调整记录 #30，用户反馈「不够显眼，加一层小小的阴影，不要重」）
+      '  box-shadow:0 1px 3px rgba(0,0,0,.15);',
       '  -webkit-app-region:no-drag;',
       '}',
       '.cmd-pad-search-input::placeholder{',
@@ -361,6 +363,8 @@ window.__ModuleLoader__.load({
       '  border-radius:8px;',
       '  padding:8px;',
       '  margin-bottom:8px;',
+      // 与搜索框同款中性黑浅投影（调整记录 #30：命令内容框同样加一层小阴影，浮起感、不重）
+      '  box-shadow:0 1px 3px rgba(0,0,0,.15);',
       '}',
       '.cmd-pad-card:hover{',
       '  border-color:var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
@@ -503,9 +507,9 @@ window.__ModuleLoader__.load({
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
       // 主形态搜索行右端的「+ 添加」与搜索控件（清空 ✕ 等）拉开间距
-      // （调整记录 #29：用户反馈搜索框末尾距添加按钮太近，仅 6px flex gap → 16px）
+      // （调整记录 #29：仅 6px flex gap 太近 → 10px；#30 用户要求再远一些 → 16px，总间距 22px）
       '.cmd-pad-search .cmd-pad-add{',
-      '  margin-left:10px;',
+      '  margin-left:16px;',
       '}',
       // ── T04：弹窗（遮罩 + 模态；弹层配方视觉规范 §2）──
       '.cmd-pad-overlay{',
