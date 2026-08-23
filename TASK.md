@@ -44,14 +44,18 @@
 
 ## T02 host 半数据层
 
-- **状态**：⬜
+- **状态**：✅（完成日期：2026-08-23）
 - **前置**：T01
 - **内容**：`/cmd-pad/api/library`（GET/PUT）+ `/cmd-pad/api/state`（PUT）；commands.yml + state.json 读写；原子写（临时文件 + rename）+ `.bak` 备份；串行写队列；Host 头信任围栏；迷你 YAML 读写器（动态加载 `yaml` 包优先）。
 - **完成定义**：
-  - [ ] curl 直接打 API：手改 yml 能 GET 读回；PUT 后文件正确且生成 `.bak`；
-  - [ ] 非法 yml 输入不破坏既有文件（读回退到 `.bak` 或报错不写入）；
-  - [ ] 连续并发 PUT 不交错损坏（串行队列生效）。
-- **备注**：此步不碰页面。数据层是后续一切写操作的地基，验收务必苛刻。
+  - [x] curl 直接打 API：手改 yml 能 GET 读回；PUT 后文件正确且生成 `.bak`；
+  - [x] 非法 yml 输入不破坏既有文件（读回退到 `.bak` 或报错不写入）；
+  - [x] 连续并发 PUT 不交错损坏（串行队列生效）。
+- **完成证据**：
+  - 验收 harness：`dsh-cmd-pad/test/t02-data-layer.test.mjs`（`node test/t02-data-layer.test.mjs`）**33/33 通过**——迷你 YAML 解析/序列化/往返/错误面 15 项、原子写+串行队列 2 项、API 全链路（真实 node:http + 模拟 cordis ctx + 真实 apply）11 项、信任围栏 3 项、yaml 动态加载 1 项、路由/边界 1 项；
+  - **真实 curl 实证**（临时服务加载插件真实代码，端口 39876）：手改 yml GET 读回 ✅；PUT 后 commands.yml 内容精确正确 + `commands.yml.bak` 保留写前内容 ✅；非法 body（BOM 前缀 JSON）→ 400 且文件未动 ✅；恶意 Host / `Sec-Fetch-Site: cross-site` → 403、正常 → 200 ✅；state 两次增量 PUT 合并（含嵌套 `viewLastUsedAt`）✅；20 并发 PUT 全 ok 且最终文件恰为 1 条完整命令（无交错）✅；
+  - ESM 冒烟：`name`/`inject:['webServer']`/`apply`/`internals` 导出正常；`node --check` 全过。
+- **备注**：此步不碰页面（client.js 未动）。数据层实现要点与 curl 复核命令见 `dsh-cmd-pad/README.md`「数据层（T02）」；host 半改动需重启 `dsh web` 生效——新 GUI 上的复核由用户执行（同 T01 实测模式，见调整记录 #5）。
 
 ## T03 抽屉只读浏览 + 复制（F2/F3/F5）
 
@@ -135,6 +139,7 @@
 | 2026-08-23 | 全部 | #2 用户明确分工：**本对话（协调会话）不修改代码**，只维护文档/规范/任务账本；代码实现由其他对话（执行会话）完成 | 执行会话开工前读 AGENTS.md 硬规则与本文件前置状态；实现完成后由协调会话按执行会话的验证反馈更新状态与完成证据、维护调整记录 |
 | 2026-08-23 | T01 | #3 用户在本次会话明确选择「由 AI 直接实现 T01」（覆盖 #2 对本对话的协调角色限定）；AGENTS.md 已同步为「执行会话写代码、协调会话只维护账本」双会话分工 | 本会话按执行会话角色完成 `dsh-cmd-pad/` 初版（package.json / cordis.patch.yml / host 半 / client 半 / README）+ `dsh plugin --profile web add` 安装 + 静态验证；T01 标 🚧（运行时目检需重启 `dsh web` 当前 GUI 宿主，重启补验后转 ✅） |
 | 2026-08-23 | T01 | #4 用户真机实测：T01 全部完成定义通过，但发现**抽屉顶栏 ✕ 与 better-sidebar 右上角按钮簇重叠**（按钮簇 `[data-dsh-toggle-cluster]` z-index 45 > 抽屉 30，盖住 ✕） | T01 转 ✅；新增 `applyClusterOffset` 避让（挂载时探测按钮簇，右缘可见时顶栏 `padding-right = 视口宽 - 按钮簇左缘 + 8px`），`node` 模拟两场景通过；同步更新接入规范 §5.5 与视觉规范 §4.2（交互面/视觉双文档，规则 10） |
+| 2026-08-23 | T02 | #5 本会话按执行会话角色（同 #3）完成 T02 host 半数据层：三条完成定义均为 API 级、不依赖 GUI，故以「验收 harness 33/33 + 真实 curl 实证（临时服务加载真实 apply 代码）」闭环，无需重启 GUI 即可完成验证 | T02 转 ✅；host 半改动需重启 `dsh web` 生效——新 GUI 上按 README「数据层（T02）」curl 复核（手改 yml 读回 / PUT+.bak / 非法输入不破坏 / 并发）由用户执行，复核无回归即进入 T03；T03 起前端消费本 API，数据层已具备写操作地基 |
 
 ## 已知风险登记（开工即知，随任务推进复核）
 
