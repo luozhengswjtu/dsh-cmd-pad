@@ -39,7 +39,7 @@
   - 安装协调：profile `package.json` 的 `dependencies` 增 `dsh-cmd-pad: link:`，`dsh.profile.bundles` 追加 `dsh-cmd-pad`；
   - client bundle 路由 `/plugins/dsh-cmd-pad/client.js` 当前返回 404——因运行中实例是安装前启动的，重启后应恢复 200（预期行为）。
 - **风险假设结论**：手写 wire format 在目标 DSH 版本可用性——对照 `dsh-client-modules` 源码（`graphRow`/`arrive`/`materialize` 全链路）与官方 bundle 产物逐条核对 + 本包模拟执行**均通过**，风险大幅下降；仍待重启后真机页面确认（运行时验证未完成前不标 ✅）。
-- **备注**：~~若 v0.1 代码已存在于别处~~ 与 T00 一致（无 v0.1 代码，从零开始）；分工边界见调整记录 #3（本会话为执行会话）。
+- **备注**：~~若 v0.1 代码已存在于别处~~ 与 T00 一致（无 v0.1 代码，从零开始）；分工边界见调整记录 #3（本会话为执行会话）。运行时目检由**用户亲自执行**（重启 `dsh web` + 硬刷新），完成后按用户反馈转 ✅ 并回填完成证据。
 
 ## T02 host 半数据层
 
