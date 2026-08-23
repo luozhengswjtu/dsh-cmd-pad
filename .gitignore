@@ -1,6 +1,13 @@
 # 上游只读参考快照，禁止纳入本仓库（只保留本插件自己的代码）
 DSH-better-sidebar-main/
 
+# 开发文档（本地保留，不随发布仓库上传；调整记录 #42）
+AGENTS.md
+TASK.md
+dsh-cmd-pad-功能文档与交互设计.md
+docs/
+dsh-cmd-pad/test/
+
 # Node / 构建产物
 node_modules/
 dist/
