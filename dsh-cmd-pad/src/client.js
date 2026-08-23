@@ -447,6 +447,8 @@ window.__ModuleLoader__.load({
       '  line-height:1.4;',
       '  padding:3px 10px;',
       '  border-radius:6px;',
+      // 与命令行代码块同款中性黑浅投影（调整记录 #36，用户要求「运行和复制按钮，保持和命令行代码块一样的阴影」）
+      '  box-shadow:0 1px 3px rgba(0,0,0,.05);',
       '  cursor:pointer;',
       '  -webkit-app-region:no-drag;',
       '}',
@@ -500,19 +502,19 @@ window.__ModuleLoader__.load({
       '.cmd-pad-toast[data-kind="error"]{',
       '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
       '}',
-      // ── T04→#33/#34/#35：「添加命令」按钮（搜索框右侧；#35 用户反馈：加同款阴影 + 拉长一点）──
+      // ── T04→#33/#34/#35/#36：「添加命令」按钮（搜索框右侧；#36 与运行/复制/代码块统一同套小控件配方）──
       '.cmd-pad-addcmd{',
       '  flex:none;',
       '  margin-left:14px;', // 与搜索框右侧末尾的距离（叠加容器 6px gap = 总间距 20px；#34 用户要求保持距离）
       '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
-      '  background:var(--dsw-alias-bg-base,var(--cp-bg-base,#1c1d21));',
+      '  background:var(--dsw-alias-bg-layer-1,var(--cp-bg-layer-1,#232428));', // #36 与运行/复制/代码块同底色
       '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
       '  font-size:12px;',
       '  line-height:1;',
       '  padding:6px 18px;', // #35 拉长：左右内边距 10px→18px
-      '  border-radius:6px;',
-      // 与搜索框/卡片同款中性黑浅投影（调整记录 #35，用户要求「添加命令也加同样的阴影」）
-      '  box-shadow:0 1px 3px rgba(0,0,0,.10);',
+      '  border-radius:6px;', // 与运行/复制/代码块/搜索框统一 6px 倒角（#36 用户反馈「边框倒角和其他不一致」）
+      // 与运行/复制/代码块同款中性黑浅投影（#36 统一 .05，用户要求「和命令行代码块一样的阴影」）
+      '  box-shadow:0 1px 3px rgba(0,0,0,.05);',
       '  cursor:pointer;',
       '  white-space:nowrap;',
       '  -webkit-app-region:no-drag;',
@@ -521,19 +523,19 @@ window.__ModuleLoader__.load({
       '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
-      // ── T04→#33/#35：「＋」新建分组（分组栏右侧；#35 用户反馈：加号再大号一点）──
+      // ── T04→#33/#35/#36：「＋」新建分组（分组栏右侧；#36 换全角加号放大，用户反馈「加号里面的大小感觉没变」）──
       '.cmd-pad-group-add{',
       '  display:inline-flex;',
       '  align-items:center;',
       '  justify-content:center;',
-      '  min-width:26px;',
-      '  height:24px;',
+      '  min-width:28px;',
+      '  height:26px;',
       '  padding:0 6px;',
       '  margin-left:auto;', // 靠分组栏右缘（用户定稿：添加分组按钮在分组栏右侧）
       '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
       '  background:transparent;',
       '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
-      '  font-size:15px;', // #35 放大：13px→15px（与「更多」箭头同字号）
+      '  font-size:16px;', // #36 放大：全角加号 ＋ 16px（ASCII + 在多数字体里纤细，只加大字号不显眼）
       '  line-height:1;',
       '  border-radius:6px;',
       '  cursor:pointer;',
@@ -1345,11 +1347,12 @@ window.__ModuleLoader__.load({
       var groupsEl = document.createElement('div')
       groupsEl.className = 'cmd-pad-groups'
 
-      // 添加分组 ＋（调整记录 #33：分组栏右侧，独立建组入口；空组自动常驻才可见）
+      // 添加分组 ＋（调整记录 #33：分组栏右侧，独立建组入口；空组自动常驻才可见。
+      // #36：全角加号 U+FF0B——ASCII + 纤细，只加大字号不显眼）
       var groupAddBtn = document.createElement('button')
       groupAddBtn.type = 'button'
       groupAddBtn.className = 'cmd-pad-group-add'
-      groupAddBtn.textContent = '+'
+      groupAddBtn.textContent = '\uFF0B'
       groupAddBtn.title = '新建分组'
       groupAddBtn.setAttribute('aria-label', '新建分组')
 

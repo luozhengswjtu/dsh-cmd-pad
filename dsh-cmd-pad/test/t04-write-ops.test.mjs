@@ -494,7 +494,7 @@ await check('E1 添加命令入口 = 搜索框右侧按钮；新建分组 = 分�
   assert.ok(s.addCmdBtn !== null, '应有「添加命令」按钮')
   assert.strictEqual(s.addCmdBtn.textContent, '添加命令')
   assert.ok(s.groupAddBtn !== null, '应有「＋」新建分组按钮')
-  assert.strictEqual(s.groupAddBtn.textContent, '+')
+  assert.strictEqual(s.groupAddBtn.textContent, '\uFF0B', '＋ 为全角加号 U+FF0B（调整记录 #36）')
   // 「添加命令」位于搜索行内（搜索框右侧）；＋ 位于分组条内
   const searchRow = find(s.drawer, '.cmd-pad-search')
   assert.ok(searchRow !== null, '搜索行在场')
