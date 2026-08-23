@@ -235,6 +235,8 @@ window.__ModuleLoader__.load({
       '.cmd-pad-search-input{',
       '  flex:1;',
       '  min-width:0;',
+      '  height:26px;', // #37 与「添加命令」按钮显式等高（用户反馈：违和感源于两者高度不一致）
+      '  box-sizing:border-box;',
       '  border:none;',
       '  outline:none;',
       '  background:var(--dsw-alias-bg-base,var(--cp-bg-base,#1c1d21));',
@@ -506,12 +508,14 @@ window.__ModuleLoader__.load({
       '.cmd-pad-addcmd{',
       '  flex:none;',
       '  margin-left:14px;', // 与搜索框右侧末尾的距离（叠加容器 6px gap = 总间距 20px；#34 用户要求保持距离）
+      '  height:26px;', // #37 与搜索框显式等高（用户反馈：违和感源于高度不一致）
+      '  box-sizing:border-box;',
       '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
       '  background:var(--dsw-alias-bg-layer-1,var(--cp-bg-layer-1,#232428));', // #36 与运行/复制/代码块同底色
       '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
       '  font-size:12px;',
       '  line-height:1;',
-      '  padding:6px 18px;', // #35 拉长：左右内边距 10px→18px
+      '  padding:5px 18px;', // #35 拉长（水平 18px）；垂直内边距 6px→5px（高度由 height 固定，#37）
       '  border-radius:6px;', // 与运行/复制/代码块/搜索框统一 6px 倒角（#36 用户反馈「边框倒角和其他不一致」）
       // 与运行/复制/代码块同款中性黑浅投影（#36 统一 .05，用户要求「和命令行代码块一样的阴影」）
       '  box-shadow:0 1px 3px rgba(0,0,0,.05);',
