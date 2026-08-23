@@ -76,7 +76,7 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
   `/cmd-pad/api/library?sessionId=` → host 半 `resolveSessionCwd` 回填权威 cwd；
   多项目末段重名时带上一级路径消歧（`Temp_Code` → `docs / Temp_Code`）；
 - **命令卡片**（§4.1）：标题 + 危险 pill → 命令等宽块（点击即复制，两行截断）→ 备注 →
-  复制按钮；`danger: true` 显示「危险」徽标；
+  `复制` / `运行` 按钮；`danger: true` 显示「危险」徽标；
 - **全局搜索**（F5）：`/` 聚焦、命中高亮（`cmd-pad-hit`）、命中计数、分组名命中、
   Esc 清空（Esc 链：搜索 → 抽屉）；
 - **复制**：`navigator.clipboard` 优先，失败回退 `execCommand`；成功 Toast「已复制」；
@@ -97,10 +97,28 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
   彻底删除；分组删除弹窗列出「N 条解除关联，M 条仅此分组的将彻底删除」；删除后 5 秒内
   Toast 可撤销（快照恢复）；
 - **右键菜单**：分组（设为常驻/取消常驻、重命名[仅自定义，级联更新+冲突拒绝]、删除）；
-  卡片（复制/编辑/删除；运行在 T05 加入）；
+  卡片（运行/复制/编辑/删除）；
 - **常驻**：state.json `pinnedGroups` 持久化；常驻分组无命令也显示（§3.3）；
 - **回归**：`node test/t04-write-ops.test.mjs`（25 项：纯逻辑 7 + DOM 交互 18，
   含 22 次连续增删改后 yml 始终合法）。
+
+## 运行（T05，client 半）
+
+「运行」= 把命令写入**当前会话对话输入框**（回车即让 Agent 执行），通道实现为
+`conversation` 服务探测（`ctx.get('conversation').input.for(sessions.scope(id)).setDraft`，
+替换式写入，**不自动发送**）；任一环节不可用 → 降级复制 + Toast 明示：
+
+- **入口**：卡片操作行「运行」按钮 + 卡片右键「运行」；
+- **危险命令**（`danger: true`）：必须经确认弹窗（显示**完整命令原文**等宽块）才入输入框，
+  取消不写；确认按钮为危险样式；
+- **降级链**（功能文档 §4.2 降级形态）：对话输入框 → 剪贴板（Toast 明示「运行通道不可用，
+  已复制到剪贴板」）；剪贴板也失败 → error Toast；
+- **刷新「上次使用」**：运行/复制均按功能文档 §3.4 刷新 lastUsedViewId（PUT `/api/state`）；
+- **安全性**（§4.3）：仅点击「运行」按钮/菜单项触发执行；浏览、搜索、切换分组、开合抽屉等
+  任何非点击行为不触发执行；
+- **回归**：`node test/t05-run.test.mjs`（14 项：writeComposerDraft 探测链各分支 +
+  DOM 交互：写输入框原文/不自动发送/危险确认/降级复制/右键路径/非点击不触发/Toast 锚定）。
+  终端直写三级降级链在 T07（主形态，实验性）。
 
 ## 开发守则
 
