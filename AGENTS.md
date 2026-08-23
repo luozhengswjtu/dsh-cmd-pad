@@ -27,6 +27,9 @@
 5. **终端直写**走 `/sidebar/ws/terminal?sessionId&tab&cwd`：输入帧原始文本；**只发文本，永不发
    `{type:'close'}` 帧**；复用终端时排除 `agent:` 前缀 tab；任何环节失败按降级链走
    （终端 → 对话输入框 → 复制 + Toast）。此协议是 better-sidebar 内部实现，其升级后必须回归验证。
+   > ⚠️ **运行功能暂缓**（TASK.md 调整记录 #21，2026-08-23）：用户决策移除「运行」，本条为未来
+   > T07 恢复时的协议约束；当前代码无运行入口（卡片仅「复制」）。降级链第二级「对话输入框」为
+   > 已否决方案，恢复时需用户重新确认取舍。
 6. **零构建纯 DOM**：client 半为手写 `__ModuleLoader__.load({ id: 'dsh-cmd-pad', factory })` wire format；
    react 可 `require('react')`（白名单）；**禁止** value-import/require `dsh-better-sidebar` 的任何模块。
 7. **视觉**：零硬编码颜色，全量 `--dsw-alias-*` 令牌 + 兜底链；无 emoji、无彩色图标（全插件仅 Tab 图标

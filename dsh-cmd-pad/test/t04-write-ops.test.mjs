@@ -756,11 +756,11 @@ await check('E17 Esc 链：弹窗开 → Esc 关弹窗（不动抽屉）', async
   assert.strictEqual(s.drawer.getAttribute('data-open'), 'true', '抽屉保持打开')
 })
 
-await check('E18 卡片右键菜单项：运行/复制/编辑/删除', async () => {
+await check('E18 卡片右键菜单项：复制/编辑/删除', async () => {
   const s = await bootScene({})
   openCardMenu(s, 'top-mem')
   const items = collect(find(s.body, '.cmd-pad-menu'), 'button', []).map((b) => b.textContent)
-  assert.deepStrictEqual(items, ['运行', '复制', '编辑', '删除'])
+  assert.deepStrictEqual(items, ['复制', '编辑', '删除'])
   // 菜单项点击后自动关闭
   clickMenu(s, '复制')
   await tick()

@@ -97,32 +97,26 @@
   - 真机验证中发现并规避：PowerShell `ConvertTo-Json` + `Invoke-RestMethod` 的 body 按 ANSI 传输导致中文变 `?`（数据损坏，非插件 bug）——改用 node fetch（UTF-8）重写演示数据（见调整记录 #14）。
 - **备注**：右键菜单「运行」项按路线图在 T05 随运行通道加入（T04 菜单为复制/编辑/删除三项，见调整记录 #15）。演示命令库保留供体验（含 1 条危险命令）。
 
-## T05 运行（对话输入框通道）+ 危险确认（v0.1 闭环）
+## T05 运行（对话输入框通道）+ 危险确认（⏸️ 挂起：用户决策移除运行，等完善方案补全）
 
-- **状态**：✅（完成日期：2026-08-23）
+- **状态**：⏸️（挂起——运行功能按用户决策**整体移除**，见调整记录 #21；完善方案（如 T07 终端直写）落地后恢复本任务范围）
 - **前置**：T04
-- **内容**：「运行」= `ctx.get('conversation')` 探测 + `setDraft` 写对话输入框；通道不可用降级复制 + Toast 明示；`danger: true` 确认弹窗（完整命令原文）；保存时危险关键词提示勾选。
-- **完成定义**：
-  - [x] 运行后输入框内容正确、不自动发送；
-  - [x] conversation 服务缺失时降级复制 + Toast；
-  - [x] 危险命令必须经确认弹窗才入输入框；
-  - [x] 浏览/搜索/切换分组等任何非点击行为不触发执行。
-- **完成证据**：
-  - 验收 harness：`dsh-cmd-pad/test/t05-run.test.mjs`（`node test/t05-run.test.mjs`）**14/14 通过**——writeComposerDraft 探测链 4 项（sessions/conversation/scope/setDraft 缺失各分支 → false、成功替换式写入原文、setDraft 抛错静默、ctx.get 缺失时 ctx 直读回退）+ DOM 交互 10 项（卡片运行按钮渲染 / 点运行写输入框原文·不自动发送·Toast「已写入输入框，回车执行」·lastUsed 刷新 / 「全部」视图语境 lastUsed 指向首个所属分组 / 危险命令确认弹窗（标题+完整命令原文 pre 块+危险样式按钮）·取消不写·确认才写 / conversation 缺失降级复制 + Toast「运行通道不可用，已复制到剪贴板」/ 剪贴板也失败 error Toast / 右键菜单运行路径（菜单项 运行/复制/编辑/删除）/ 完成定义 4：搜索·切分组·视图切换·开合抽屉不触发执行 / Toast 锚定运行按钮左侧 / 危险命令确认后运行同样刷新 lastUsed）；
-  - **回归**：t04-write-ops 25 + t03-browse-copy 30 + t03-drawer-layout 12 + t02-cluster-offset 7 + t02-data-layer 33 全过（**全套 121 项**）；`node --check` 全过；
-  - **WebBridge 真机实证**（真实浏览器，截图 `dsh-cmd-pad/test/shots/t05-run-draft.png` / `t05-danger-modal.png`）：
-    - 点「运行」→ 对话输入框 value 变为命令原文（npm test）、Toast「已写入输入框，回车执行」、**不自动发送**（文本留在输入框）；
-    - 危险命令（清理日志 `rm -rf /data/log/*`）→ 确认弹窗「运行危险命令」+ 完整命令原文等宽块 + 红色危险样式「运行」按钮；取消 → 输入框未写入；确认 → 命令原文入输入框；
-    - 右键菜单「运行」路径生效（items=[运行,复制,编辑,删除]）；
-    - 切分组/搜索等非点击行为后输入框保持为空（不触发执行）；
-    - live lastUsed 刷新：全部视图运行 proj-test → `lastUsedViewId=group:E:\KimiProGram\dshplugin`（首个所属分组，§3.4 语义正确）；
-    - 降级分支（conversation 缺失）真机无法构造（真实 GUI 恒有该服务），由 harness S5/S6 覆盖。
-- **里程碑**：v0.1 功能闭环 → 打 tag `v0.1.0`（提交号见 git tag）。
+- **内容**：（已撤回实现）「运行」= `ctx.get('conversation')` 探测 + `setDraft` 写对话输入框；通道不可用降级复制 + Toast 明示；`danger: true` 确认弹窗（完整命令原文）；保存时危险关键词提示勾选。
+- **完成定义**：（随运行功能移除全部撤回，代码已回退）
+  - [ ] ~~运行后输入框内容正确、不自动发送~~（方案被否）
+  - [ ] ~~conversation 服务缺失时降级复制 + Toast~~（方案被否）
+  - [ ] ~~危险命令必须经确认弹窗才入输入框~~（方案被否；`danger` 标记本身保留：卡片「危险」徽标 + 保存时关键词提示勾选，供未来运行通道恢复时做二次确认）
+  - [ ] ~~浏览/搜索/切换分组等任何非点击行为不触发执行~~（方案被否）
+- **撤销证据**（记录曾完成的工作，供未来恢复参照）：
+  - 曾实现：卡片「运行」按钮 + 右键菜单「运行」、conversation `setDraft` 替换式写入（探测链 `ctx.get('sessions').scope(id)` → `ctx.get('conversation').input.for(actx)`，对齐 better-sidebar `conversation-draft.ts`）、危险确认弹窗（`.cmd-pad-modal-pre` 命令原文块）、降级复制 + Toast；
+  - 曾验收：`t05-run.test.mjs` 14/14 + 全套 121 项回归 + WebBridge 真机实证（截图曾存 `test/shots/t05-*.png`）——**2026-08-23 用户评估后否决该方案，以上实现与测试已全部移除/回退**，当前工作区回归 **107 项全过**（t02-data-layer 33 + t02-cluster-offset 7 + t03-drawer-layout 12 + t03-browse-copy 30 + t04-write-ops 25）；
+  - 现状：卡片仅「复制」按钮，右键菜单 = 复制/编辑/删除，表单危险勾选标签已改为「危险命令（卡片显示危险徽标；未来运行通道恢复时需二次确认）」。
+- **里程碑**：~~v0.1 功能闭环 → tag `v0.1.0`~~ **已撤销**：`v0.1.0` tag 已删除（本地未推送），运行不在 v0.1 范围；v0.1 里程碑重新定义为「浏览/复制/写操作闭环」，待未来决定是否补 tag。
 
 ## T06 better-sidebar Tab 主形态（v0.2 起点）
 
 - **状态**：⬜
-- **前置**：T05
+- **前置**：T04（T05 挂起：运行功能已移除，主形态与抽屉均无运行按钮，等价性不受影响；未来运行方案落地时主形态一并接入）
 - **内容**：`ctx.get('betterSidebar')` 探测 + `ctx.effect(() => registerTab(...))`（id `cmd-pad:pad`、order 45、single、图标按视觉规范 §3.2）；React 桥接组件（`require('react')`，ref 挂载纯 DOM 面板，scope 变化重挂，`visible` 性能门）；badge 与 onActivate 走 `features` 能力门；插件设置走 `settings.pluginToggles`（能力门后）。
 - **完成定义**：
   - [ ] 主形态：设置页「侧边卡片」出现「命令」卡片；+ 菜单出现「命令」（终端与浏览器之间）；Tab 内功能与抽屉完全等价；
@@ -137,6 +131,7 @@
 - **状态**：⬜
 - **前置**：T06
 - **内容**：三级降级链第一级——按接入规范 §3.3 流程选终端（排除 `agent:` 前缀）→ 短命 WS 附加 `/sidebar/ws/terminal` 发送命令（危险命令不带 `\r`）→ bare drop；失败降级对话输入框 → 再降级复制 + Toast。**先实机验证双 WS 附加**（设计文档 §8 待确认项 1），不通过则落地保守方案（openTab + 复制 + Toast「已复制，到终端粘贴执行」）。
+- **备注**（调整记录 #21 后）：降级链第二级「写对话输入框」即被否决的 T05 方案，T07 落地时**需用户重新确认**第二级取舍（终端直写失败后：直接复制，或仍保留对话输入框兜底）；T05 挂起期间本任务不启动。
 - **完成定义**：
   - [ ] 双 WS 附加实机验证结论写入「调整记录」（通过/不通过 + 证据）；
   - [ ] 运行命令落位正确，用户侧终端视图不受干扰；
@@ -181,10 +176,11 @@
 | 2026-08-23 | T03 | #18 **复制 Toast 锚定用户定稿**：用户反馈「已复制的提示就在复制按钮的左侧才对」——Toast 不再固定视口右下角，改为**锚定到被点击的复制按钮/命令块左侧**（垂直居中，视口内 clamp，左侧放不下时放右侧）；其余 Toast（保存/删除/撤销等）保持右下角 | 已实现：`createToast` 增加可选 `anchor` 参数，`positionByAnchor` 计算左侧定位；`onCopyCommand(cmdId, anchorEl)` 由内容区点击委托传入复制元素；测试 B6 增补锚定断言（style.left 为 px + right=auto），**107 项全过**；WebBridge 真机复核——toast 显示于复制按钮左侧（toast 右缘 2042 < 按钮左缘 2086、垂直对齐 188≈189、styleRight=auto），截图 `test/shots/t03-toast-anchored.png`（合成点击复制失败分支同样锚定；成功分支同路径） |
 | 2026-08-23 | T03 | #19 **Toast 停留时长用户定稿**：用户反馈「停留太久了，1s 够了」 | 普通提示（已复制/已保存/已删除等）显示时长 4s → **1s**；带操作按钮的 Toast（删除后「撤销」）保持 5s（与 5s 撤销窗口一致，保证用户来得及点撤销）；测试 107 项全过 |
 | 2026-08-23 | T05 | #20 **setDraft 写入语义落定**：功能文档 §4.2「运行 = 写入对话输入框」未明示替换 vs 追加。better-sidebar 的 appendToDraft（@引用用）是空格分隔**追加**；「运行」语义是"让 Agent 执行这条命令"，落定为**替换式**——命令原文整体进入输入框，用户回车即执行，避免与既有草稿混杂（对应完成定义「输入框内容正确」）。Toast 文案：「已写入输入框，回车执行」；降级 Toast「运行通道不可用，已复制到剪贴板」（明示原因） | 已实现并测试锁定（t05-run R2/S2/S5）；探测链契约（`ctx.get('sessions').scope(id)` → `ctx.get('conversation').input.for(actx)` → `setDraft`）对齐 better-sidebar `conversation-draft.ts`，ctx.get 缺失时回退 `ctx.sessions`/`ctx.conversation` 直读，与接入规范 §5.6 的降级链一致 |
+| 2026-08-23 | T05 | #21 **用户决策：运行功能整体移除**。T05 实现完成并经真机验证（14/14 harness + 121 回归 + WebBridge 实证）后，用户评估「运行 = 写对话输入框（回车让 Agent 执行）」方案不佳，明确要求**直接去掉运行功能**，「后面有完善的解决方案才补全」 | **代码全部回退**：卡片「运行」按钮、右键菜单「运行」、`writeComposerDraft`/`resolveSessionScope`/`resolveConversationInput`、危险确认弹窗（`.cmd-pad-modal-pre`）删除；卡片仅「复制」按钮、右键菜单 = 复制/编辑/删除（t04 E18 恢复）；表单危险勾选标签改「危险命令（卡片显示危险徽标；未来运行通道恢复时需二次确认）」；`t05-run.test.mjs` 与 t05 截图删除；当前回归 **107 项全过**。**T05 转 ⏸️ 挂起**（完成定义撤回，待完善方案——如 T07 终端直写——落地后恢复本任务范围）；`v0.1.0` tag **已删除**（本地未推送，里程碑撤销）；T06 前置改 T04（主形态与抽屉均无运行按钮，等价性不受影响）；T07 降级链第二级（对话输入框）待用户重新确认（见该任务备注）；同步更新 README、功能文档 §4.1/§4.2/§4.3/§7、接入规范 §5.6、视觉规范 §2 |
 
 ## 已知风险登记（开工即知，随任务推进复核）
 
 1. **手写 wire format**（T01 验证）——不可用则 bundle 方案整体调整；
 2. **终端 WS 是未文档化内部协议**（T07 验证）——better-sidebar 每次升级后回归；当前快照 v0.15.1 实证可用，但 tab id 为 `terminal:<uuid>` 且须排除 `agent:` 前缀（接入规范 §3.2）；
-3. **conversation 服务探测**（T05 已闭环）——`ctx.get('conversation').input.for(sessions.scope(id)).setDraft` 在目标 DSH 版本**真机实测可用**（2026-08-23，WebBridge 实证：输入框正确写入、不自动发送）；缺失时保底 = 复制 + Toast（harness S5/S6 锁定）；better-sidebar 升级后随接入规范 §5.6 回归；
+3. **conversation 服务探测**（T05 已随运行功能移除，见调整记录 #21）——`ctx.get('conversation').input.for(sessions.scope(id)).setDraft` 曾真机实测可用（2026-08-23），但运行方案已被用户否决，该探测当前**无消费方**；若未来恢复运行通道，需重新实测（better-sidebar 升级后随接入规范 §5.6 回归）；
 4. **皮肤令牌覆盖度**（T03 起每次目检）——玻璃皮肤的 `bg-base` 半透明问题按视觉规范 §1.1 第 5 条处理。

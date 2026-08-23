@@ -120,6 +120,9 @@ ctx.effect(() => bs.registerTab({
 
 ## 3. 终端直写通道（运行功能，实证协议）
 
+> ⚠️ **本条为未来 T07 恢复运行的协议依据，当前不落地**（运行功能已按用户决策移除，
+> TASK.md 调整记录 #21；协议已对源码实证，保留供恢复时直接使用）。
+
 > 功能文档 §4.2 的三级降级链所依赖的协议，已对 `src/index.ts`（`attachTerminal`）与
 > `src/client/TerminalView.tsx` 逐行核实。**注意：这是 better-sidebar 未文档化承诺的内部协议，**
 > **版本升级可能变更——每次升级 better-sidebar 后必须回归验证（功能文档 §8 待确认项 1）。**
@@ -218,7 +221,11 @@ if (bs.features.includes('pluginSettings')) { // v0.12.0+：settings.pluginToggl
      把 ✕ 推到按钮簇左侧。调用时机：**挂载时 + 每次抽屉打开时重算**（better-sidebar 为 React
      挂载，与插件 apply 时序不定，打开时探测最可靠）。T06 主形态下 cmd-pad 不自建浮层，
      此避让逻辑不再需要。
-6. 任一运行通道失败 → 写对话输入框（`ctx.get('conversation')` 探测，`setDraft`）→ 复制 + Toast。
+6. ~~任一运行通道失败 → 写对话输入框（`ctx.get('conversation')` 探测，`setDraft`）→ 复制 + Toast。~~
+   **本条暂缓**（TASK.md 调整记录 #21，2026-08-23）：运行功能已按用户决策整体移除，
+   conversation 探测链（`ctx.get('sessions').scope(id)` → `ctx.get('conversation').input.for(actx)`
+   → `setDraft`）当前无消费方；未来恢复运行通道时按本条重新落地并回归（契约参考
+   better-sidebar `src/client/conversation-draft.ts`）。
 
 ---
 

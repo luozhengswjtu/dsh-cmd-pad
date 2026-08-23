@@ -1,5 +1,5 @@
 /**
- * dsh-cmd-pad client half（T01 最小骨架 → T03 只读浏览 + 复制 → T04 写操作 → T05 运行）
+ * dsh-cmd-pad client half（T01 最小骨架 → T03 只读浏览 + 复制 → T04 写操作）
  *
  * 手写 wire format（零构建，AGENTS.md 硬规则 6）：
  *   window.__ModuleLoader__.load({ id: 'dsh-cmd-pad', factory })
@@ -14,11 +14,9 @@
  * 一键复制 + Toast；项目识别走会话 cwd（host 半 resolveSessionCwd，client 侧
  * 探测 sessions 服务取当前会话 id）；复制成功时按功能文档 §3.4 刷新「上次使用」
  * slot（PUT /api/state，机器状态，非命令库写操作）。
- * T05 范围：运行（功能文档 §4.2 降级形态通道）——「运行」= conversation 服务
- * 探测（ctx.get('conversation').input.for(sessions.scope(id)).setDraft）写当前
- * 会话对话输入框（替换式，不自动发送）；danger: true 必须先经确认弹窗（完整命令
- * 原文）才入输入框；通道不可用降级复制 + Toast 明示；运行/复制均按 §3.4 刷新
- * 「上次使用」。终端直写三级降级链在 T07（主形态）。
+ * 运行功能（T05 曾实现为 conversation setDraft 写对话输入框）已按用户决策
+ * **整体移除**（TASK.md 调整记录 #21）：卡片只留「复制」；等完善方案（T07
+ * 终端直写三级降级链）落地再补全（届时主形态）。
  * 主形态（better-sidebar Tab 注册）在 T06 实现，届时按 ctx.get('betterSidebar')
  * 探测分流（AGENTS.md 硬规则 1：绝不把 'betterSidebar' 写进硬 inject）。
  *
@@ -473,22 +471,6 @@ window.__ModuleLoader__.load({
       '  line-height:1.7;',
       '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
       '  margin-bottom:10px;',
-      '  white-space:pre-wrap;',
-      '  word-break:break-all;',
-      '}',
-      // T05：危险命令确认弹窗的命令原文块（等宽、可滚动，完整命令一字不改）
-      '.cmd-pad-modal-pre{',
-      '  margin:0 0 10px;',
-      '  padding:8px 10px;',
-      '  max-height:160px;',
-      '  overflow-y:auto;',
-      '  font-family:var(--ds-font-family-code, monospace);',
-      '  font-size:11px;',
-      '  line-height:1.6;',
-      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
-      '  background:var(--dsw-alias-bg-base,var(--cp-bg-base,#1c1d21));',
-      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
-      '  border-radius:6px;',
       '  white-space:pre-wrap;',
       '  word-break:break-all;',
       '}',
@@ -1304,11 +1286,6 @@ window.__ModuleLoader__.load({
       copyBtn.type = 'button'
       copyBtn.setAttribute('data-copy-cmd', '')
       actions.appendChild(copyBtn)
-      // T05：运行（降级形态 = 写对话输入框；主形态终端直写在 T07）
-      var runBtn = el('button', 'cmd-pad-btn', '运行')
-      runBtn.type = 'button'
-      runBtn.setAttribute('data-run-cmd', '')
-      actions.appendChild(runBtn)
       card.appendChild(actions)
       return card
     }
@@ -1434,7 +1411,7 @@ window.__ModuleLoader__.load({
       dangerCheck.type = 'checkbox'
       if (opts.cmd && opts.cmd.danger === true) dangerCheck.checked = true
       dangerLabel.appendChild(dangerCheck)
-      dangerLabel.appendChild(el('span', null, '危险命令（运行需二次确认）'))
+      dangerLabel.appendChild(el('span', null, '危险命令（卡片显示危险徽标；未来运行通道恢复时需二次确认）'))
       dangerRow.appendChild(dangerLabel)
 
       var noteRow = el('div', 'cmd-pad-form-row')
@@ -1496,15 +1473,11 @@ window.__ModuleLoader__.load({
       return modal
     }
 
-    /** 确认弹窗。opts: { title, message, pre?, danger?, okLabel?, onCancel, onConfirm }。 */
+    /** 确认弹窗。opts: { title, message, danger?, okLabel?, onCancel, onConfirm }。 */
     function buildConfirmModal(opts) {
       var modal = el('div', 'cmd-pad-modal')
       modal.appendChild(el('div', 'cmd-pad-modal-title', opts.title))
       modal.appendChild(el('div', 'cmd-pad-modal-message', opts.message))
-      // pre：命令原文块（T05 危险命令确认——完整命令一字不改，功能文档 §4.3）
-      if (typeof opts.pre === 'string' && opts.pre !== '') {
-        modal.appendChild(el('pre', 'cmd-pad-modal-pre', opts.pre))
-      }
       var actions = el('div', 'cmd-pad-form-actions')
       var cancelBtn = el('button', 'cmd-pad-btn', '取消')
       cancelBtn.type = 'button'
@@ -1707,60 +1680,6 @@ window.__ModuleLoader__.load({
           body: JSON.stringify({ lastUsedViewId: viewId, viewLastUsedAt: { [viewId]: Date.now() } }),
         }).catch(function () {})
       } catch (error) { /* 静默：状态刷新失败不影响复制 */ }
-    }
-
-    // ════════════════════════════════════════════════════════════════════
-    // T05 运行通道（功能文档 §4.2 降级形态：conversation setDraft）
-    // ════════════════════════════════════════════════════════════════════
-
-    /**
-     * 解析当前会话的 agent 作用域 ctx：ctx.get('sessions').scope(sessionId)
-     * （契约对齐 better-sidebar conversation-draft.ts / context-types.ts；
-     * ctx.get 失败时回退 ctx.sessions 直读）。取不到返回 undefined。
-     */
-    function resolveSessionScope(ctx, sessionId) {
-      if (ctx === null || ctx === undefined || typeof sessionId !== 'string' || sessionId === '') return undefined
-      var sessions = null
-      if (typeof ctx.get === 'function') sessions = ctx.get('sessions')
-      if (sessions === null || sessions === undefined) sessions = ctx.sessions
-      if (sessions === null || sessions === undefined) return undefined
-      if (typeof sessions.scope !== 'function') return undefined
-      return sessions.scope(sessionId)
-    }
-
-    /**
-     * 经 agent 作用域 ctx 解析会话的对话输入服务：
-     * ctx.get('conversation').input.for(actx)（回退 ctx.conversation 直读）。
-     * 取不到返回 undefined。
-     */
-    function resolveConversationInput(ctx, actx) {
-      if (ctx === null || ctx === undefined || actx === undefined) return undefined
-      var conversation = null
-      if (typeof ctx.get === 'function') conversation = ctx.get('conversation')
-      if (conversation === null || conversation === undefined) conversation = ctx.conversation
-      if (conversation === null || conversation === undefined) return undefined
-      var input = conversation.input
-      if (input === null || typeof input !== 'object' || typeof input.for !== 'function') return undefined
-      return input.for(actx)
-    }
-
-    /**
-     * 运行通道：把命令文本写入当前会话对话输入框（替换式 setDraft，不自动发送）。
-     * 任一环节不可用（无 sessions/conversation 服务、scope 缺失、setDraft 缺失、
-     * 抛错）返回 false，由调用方降级复制 + Toast 明示。失败静默 warn，绝不 crash。
-     */
-    function writeComposerDraft(ctx, sessionId, text) {
-      try {
-        var actx = resolveSessionScope(ctx, sessionId)
-        if (actx === undefined) return false
-        var input = resolveConversationInput(ctx, actx)
-        if (input === undefined || typeof input.setDraft !== 'function') return false
-        input.setDraft(String(text))
-        return true
-      } catch (error) {
-        console.warn('[dsh-cmd-pad] 对话输入框写入失败:', error)
-        return false
-      }
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -2118,7 +2037,7 @@ window.__ModuleLoader__.load({
         }
 
         /**
-         * 运行/复制语境下的 lastUsed 视图（功能文档 §3.4）：
+         * 复制语境下的 lastUsed 视图（功能文档 §3.4）：
          * 「全部」/「未分组」视图 → 命令第一个所属分组（'all' 不作为 lastUsed 存储）。
          */
         function viewIdForLastUsed(cmd) {
@@ -2151,53 +2070,6 @@ window.__ModuleLoader__.load({
             }
             toast('已复制', null, null, null, anchorEl)
             // 刷新「上次使用」slot（功能文档 §3.4）
-            applyLastUsed(cmd)
-          })
-        }
-
-        // ── T05：运行（降级形态 = conversation setDraft 写对话输入框）──
-
-        /**
-         * 运行命令：danger 命令必须先经确认弹窗（完整命令原文）才入输入框
-         * （功能文档 §4.3）；非危险命令直接写。执行细节见 doRun。
-         */
-        function runCommand(cmdId, anchorEl) {
-          if (cmdId === null) return
-          var cmd = findCommand(cmdId)
-          if (cmd === null || typeof cmd.cmd !== 'string') return
-          if (cmd.danger === true) {
-            showModal(buildConfirmModal({
-              title: '运行危险命令',
-              message: '该命令已标记为危险。确认后仅写入对话输入框（不会自动发送），由你决定何时执行：',
-              pre: cmd.cmd,
-              danger: true,
-              okLabel: '运行',
-              onCancel: hideModal,
-              onConfirm: function () {
-                hideModal()
-                doRun(cmd, anchorEl)
-              },
-            }))
-            return
-          }
-          doRun(cmd, anchorEl)
-        }
-
-        /** 写入对话输入框；通道不可用降级复制 + Toast 明示（功能文档 §4.2）。 */
-        function doRun(cmd, anchorEl) {
-          var sessionId = getCurrentSessionId(ctx)
-          if (writeComposerDraft(ctx, sessionId, cmd.cmd)) {
-            toast('已写入输入框，回车执行', null, null, null, anchorEl)
-            applyLastUsed(cmd)
-            return
-          }
-          // 运行通道不可用 → 复制 + Toast 明示降级原因
-          copyText(cmd.cmd, function (ok) {
-            if (!ok) {
-              toast('运行通道不可用，复制失败', 'error', null, null, anchorEl)
-              return
-            }
-            toast('运行通道不可用，已复制到剪贴板', null, null, null, anchorEl)
             applyLastUsed(cmd)
           })
         }
@@ -2521,17 +2393,10 @@ window.__ModuleLoader__.load({
             var card = closestUp(copyEl, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
             // Toast 锚定到复制按钮/命令块左侧（用户定稿）
             onCopyCommand(card !== null ? card.getAttribute('data-cmd-id') : null, copyEl)
-            return
-          }
-          // T05：运行按钮（仅点击触发；浏览/搜索/切换分组不触发执行）
-          var runEl = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-run-cmd') !== null })
-          if (runEl !== null) {
-            var runCard = closestUp(runEl, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
-            runCommand(runCard !== null ? runCard.getAttribute('data-cmd-id') : null, runEl)
           }
         })
 
-        // 卡片右键（运行 / 复制 / 编辑 / 删除；T05 起含运行）
+        // 卡片右键（复制 / 编辑 / 删除）
         contentEl.addEventListener('contextmenu', function (event) {
           var target = event.target || contentEl
           if (typeof event.preventDefault === 'function') event.preventDefault()
@@ -2539,7 +2404,6 @@ window.__ModuleLoader__.load({
           if (card === null) return
           var cmdId = card.getAttribute('data-cmd-id')
           openContextMenu(event.clientX || 0, event.clientY || 0, [
-            { label: '运行', onClick: function () { runCommand(cmdId) } },
             { label: '复制', onClick: function () { onCopyCommand(cmdId) } },
             { label: '编辑', onClick: function () { openEditForm(cmdId) } },
             { label: '删除', danger: true, onClick: function () { requestDeleteCommand(cmdId) } },
@@ -2666,9 +2530,6 @@ window.__ModuleLoader__.load({
       groupDeletionPlan: groupDeletionPlan,
       renameGroup: renameGroup,
       togglePinned: togglePinned,
-      resolveSessionScope: resolveSessionScope,
-      resolveConversationInput: resolveConversationInput,
-      writeComposerDraft: writeComposerDraft,
     }
     return module.exports
   },
