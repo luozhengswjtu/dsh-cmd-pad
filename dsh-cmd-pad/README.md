@@ -11,10 +11,13 @@ DSH Web UI 里的「测试命令行速查面板」：命令按**自定义分组 
 ## 安装
 
 ```bash
-dsh plugin --profile web add <本目录>
+# <插件包目录> = 含 package.json 的目录（本仓库为 dsh-cmd-pad/ 子目录）
+dsh plugin --profile web add <插件包目录>
 ```
 
-装完重启 `dsh web` + 硬刷新浏览器（Ctrl+Shift+R）。
+装完重启 `dsh web` + 硬刷新浏览器（Ctrl+Shift+R）。安装后：
+- 主形态入口：设置页「侧边卡片」出现「命令」卡片；`+` 菜单出现「命令」（终端与浏览器之间）；
+- 降级形态入口：右下角浮动图标（未装 better-sidebar 时出现）。
 
 ## 使用说明
 
@@ -123,8 +126,8 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **右键菜单**：分组（设为常驻/取消常驻、重命名[仅自定义，级联更新+冲突拒绝]、删除）；
   卡片（复制/编辑/删除）；
 - **常驻**：state.json `pinnedGroups` 持久化；常驻分组无命令也显示（§3.3）；
-- **回归**：`node test/t04-write-ops.test.mjs`（25 项：纯逻辑 7 + DOM 交互 18，
-  含 22 次连续增删改后 yml 始终合法）。
+- **回归**：`node test/t04-write-ops.test.mjs`（28 项：纯逻辑 7 + DOM 交互 21，
+  含 22 次连续增删改后 yml 始终合法、＋ 新建分组全链路）。
 
 ## 运行功能（T07，2026-08-23 落地；调整记录 #28 增补）
 
@@ -165,9 +168,9 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **回归**：`node test/t06-main-form.test.mjs`（14 项：探测链/descriptor 字段/能力门×3/
   无浮层/react 不可用回退/HMR/组件挂载/scope 重挂/visible 门/onActivate/插件设置/Esc 链）。
 
-## 回归汇总（T08 收尾 138 项；调整记录 #28 后 150 项；#33 后 152 项）
+## 回归汇总（T08 收尾 138 项；#28 后 150 项；#33 后 152 项；#38 后 153 项）
 
-全套验收 harness **152 项全过**（`node test/<t0X>-*.test.mjs`，工作目录 `dsh-cmd-pad/`）：
+全套验收 harness **153 项全过**（`node test/<t0X>-*.test.mjs`，工作目录 `dsh-cmd-pad/`）：
 
 | harness | 项数 | 覆盖 |
 |---|---|---|
@@ -175,7 +178,7 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 | `t02-cluster-offset` | 7 | 顶栏 ✕ 与 better-sidebar 按钮簇避让（双锚点探测） |
 | `t03-drawer-layout` | 12 | 抽屉占用式推挤 + 拖拽分栏 + 持久化 |
 | `t03-browse-copy` | 38 | 分组模型/消歧/搜索/**上次使用视图（记录/范围切换/ⓘ）** + DOM 渲染 + 视觉规范 §6 静态检查 |
-| `t04-write-ops` | 27 | 增删改/删除语境语义/撤销/重命名级联/常驻持久化/**新建分组（＋ 独立入口，自动常驻/校验）** |
+| `t04-write-ops` | 28 | 增删改/删除语境语义/撤销/重命名级联/常驻持久化/**新建分组（＋ 独立入口，自动常驻/校验/取消常驻不消失）** |
 | `t06-main-form` | 14 | 主形态探测链/descriptor/能力门/无浮层/React 桥接/插件设置 |
 | `t07-run` | 21 | 终端直写成功路径/**底部栏落点/onSuccess**/危险不带 \r/降级链×4/回滚/UI |
 
