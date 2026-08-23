@@ -115,9 +115,7 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 装了 better-sidebar 时 cmd-pad 注册为其侧边栏 Tab（探测 `ctx.get('betterSidebar')`，软依赖）：
 
 - **注册描述符**：id `cmd-pad:pad`、标题「命令」、order 45（终端与浏览器之间）、`single: true`、
-  单色 SVG 终端符号图标（视觉规范 §3.2）；
-- **badge**（能力门 `features.includes('badge')`）：Tab 角标显示命令总数，空库不显示（模块级
-  缓存，数据加载时更新）；
+  单色 SVG **命令列表图标**（提示符 `>` + 两行命令线，与内置终端 `>_` 图标明显区分）；
 - **onActivate**（能力门 `tabLifecycle`）：切回 Tab 时拉取最新命令库（多标签页/手改 yml 保鲜）；
 - **插件设置**（能力门 `pluginSettings`）：设置页「命令」卡片齿轮内「打开时定位上次使用的分组」
   开关（`openToLastUsed`，持久化于 `pluginSettings['cmd-pad:pad']`）；

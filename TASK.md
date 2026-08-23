@@ -126,13 +126,13 @@
   - [x] HMR/禁用重载无 `already registered` 报错。
 - **完成证据**：
   - 架构：内容区核心提取为**共享工厂 `createCmdPadPanel(ctx, opts)`**（状态/渲染/写操作/事件绑定/键盘，两形态 100% 复用）；`apply` 先 `probeBetterSidebar(ctx)`（ctx.get → ctx 直读回退，AGENTS 硬规则 1），有 → `registerMainTab`（React 桥接组件 ref 挂纯 DOM 面板 + scope deps 重挂 + `setVisible` 性能门），无 → 降级浮动图标 + 抽屉（原逻辑）——`require('react')` 不可用时自动回退降级（T06 依赖调整点闭环，未触发）；
-  - 验收 harness：`dsh-cmd-pad/test/t06-main-form.test.mjs`（`node test/t06-main-form.test.mjs`）**14/14 通过**——探测链 1 + descriptor 字段（id/title/order 45/single/单色 SVG icon）1 + 能力门 3（badge 命令总数·空库不显示 / onActivate / pluginToggles）+ 无浮层 1 + react 不可用回退 1 + HMR 二次 apply 1 + React 桥接 6（挂载渲染/scope 重挂/visible 门/onActivate 刷新/插件设置 openToLastUsed/主形态 Esc 链）；
+  - 验收 harness：`dsh-cmd-pad/test/t06-main-form.test.mjs`（`node test/t06-main-form.test.mjs`）**14/14 通过**——探测链 1 + descriptor 字段（id/title/order 45/single/单色 SVG icon）1 + 能力门 3（badge 已移除·能力门与否均不注册 / onActivate / pluginToggles）+ 无浮层 1 + react 不可用回退 1 + HMR 二次 apply 1 + React 桥接 6（挂载渲染/scope 重挂/visible 门/onActivate 刷新/插件设置 openToLastUsed/主形态 Esc 链）；
   - **回归**：t04-write-ops 25 + t03-browse-copy 30 + t03-drawer-layout 12 + t02-cluster-offset 7 + t02-data-layer 33 全过（**全套 121 项**）；`node --check` 全过；
   - **WebBridge 真机实证**（真实浏览器，截图 `dsh-cmd-pad/test/shots/t06-settings-card.png` / `t06-main-tab.png`）：
     - 设置页「侧边卡片」分区出现「命令」卡片（与其他侧边卡片同列）✅；`+` 菜单出现「命令」（**终端与浏览器之间**，order 45 正确）✅；
     - Tab 内功能与抽屉等价：打开 Tab 内容区 = 搜索/分组条/卡片/+ 添加（搜索行右端）/复制（合成点击降级 Toast「复制失败」同抽屉）/添加表单弹窗，初始视图 = 上次使用分组（group:E:\KimiProGram\dshplugin → 跑测试）✅；
     - **主形态无浮层**：`.cmd-pad-fab` / `.cmd-pad-drawer` 均不存在 ✅；
-    - **badge 能力门**：Tab 角标显示命令总数（6 → 手改 yml 加 1 条后 onActivate 刷新为 7）✅；
+    - **badge 曾显示命令总数**（6 → 手改 yml 加 1 条后 onActivate 刷新为 7）✅——**后按用户决策移除**（调整记录 #23：用户对 tab 角标「6」有异议，决定去掉），真机复核 Tab 无角标、图标换为命令列表符号（截图 `t06-tab-no-badge-new-icon.png`）；
     - **onActivate 保鲜**：API 手改命令库后切走再切回 Tab → 新命令「T06外部新增」出现在全部视图 ✅；
     - **visible 性能门**：cmd-pad tab 落在底部面板（宿主布局，见调整记录 #22）隐藏时内容挂起「加载中…」，展开面板后自动渲染完成（renderDirty 补渲）✅；
     - 降级形态真机未卸载 better-sidebar 验证（卸载影响宿主环境），由 harness M7 + 107 项旧测试覆盖（无 betterSidebar → fab+drawer 照常）。
@@ -190,6 +190,7 @@
 | 2026-08-23 | T05 | #20 **setDraft 写入语义落定**：功能文档 §4.2「运行 = 写入对话输入框」未明示替换 vs 追加。better-sidebar 的 appendToDraft（@引用用）是空格分隔**追加**；「运行」语义是"让 Agent 执行这条命令"，落定为**替换式**——命令原文整体进入输入框，用户回车即执行，避免与既有草稿混杂（对应完成定义「输入框内容正确」）。Toast 文案：「已写入输入框，回车执行」；降级 Toast「运行通道不可用，已复制到剪贴板」（明示原因） | 已实现并测试锁定（t05-run R2/S2/S5）；探测链契约（`ctx.get('sessions').scope(id)` → `ctx.get('conversation').input.for(actx)` → `setDraft`）对齐 better-sidebar `conversation-draft.ts`，ctx.get 缺失时回退 `ctx.sessions`/`ctx.conversation` 直读，与接入规范 §5.6 的降级链一致 |
 | 2026-08-23 | T05 | #21 **用户决策：运行功能整体移除**。T05 实现完成并经真机验证（14/14 harness + 121 回归 + WebBridge 实证）后，用户评估「运行 = 写对话输入框（回车让 Agent 执行）」方案不佳，明确要求**直接去掉运行功能**，「后面有完善的解决方案才补全」 | **代码全部回退**：卡片「运行」按钮、右键菜单「运行」、`writeComposerDraft`/`resolveSessionScope`/`resolveConversationInput`、危险确认弹窗（`.cmd-pad-modal-pre`）删除；卡片仅「复制」按钮、右键菜单 = 复制/编辑/删除（t04 E18 恢复）；表单危险勾选标签改「危险命令（卡片显示危险徽标；未来运行通道恢复时需二次确认）」；`t05-run.test.mjs` 与 t05 截图删除；当前回归 **107 项全过**。**T05 转 ⏸️ 挂起**（完成定义撤回，待完善方案——如 T07 终端直写——落地后恢复本任务范围）；`v0.1.0` tag **已删除**（本地未推送，里程碑撤销）；T06 前置改 T04（主形态与抽屉均无运行按钮，等价性不受影响）；T07 降级链第二级（对话输入框）待用户重新确认（见该任务备注）；同步更新 README、功能文档 §4.1/§4.2/§4.3/§7、接入规范 §5.6、视觉规范 §2 |
 | 2026-08-23 | T06 | #22 **主形态落地 + 宿主落点观察**。T06 实现完成：内容区共享工厂 `createCmdPadPanel` 两形态 100% 复用；`registerMainTab`（React 桥接 + badge/onActivate/pluginToggles 能力门）；真机实证（设置页卡片 / + 菜单 order 45 / badge 6→7 / onActivate 手改 yml 保鲜 / 无浮层 / HMR）。**观察项**：cmd-pad tab 首次打开**落在 better-sidebar 底部面板**（该会话布局持久化的落点），面板隐藏时 `visible=false` → 内容挂起「加载中…」，展开面板后自动补渲染（性能门设计如此，非缺陷）；落点由宿主布局管理，插件不干预 | T06 转 ✅（14/14 harness + 121 回归 + WebBridge 实证，见完成证据）；接入规范增 §2.4 实现注记（badge 模块级缓存 / onActivate panel 注册表 / pluginToggles 读取 / 落点观察）；视觉规范 §3.2 定稿 Tab 图标（`>_` 终端符号）+ §3.3 主形态宿主容器配方；README 增「主形态（T06）」小节；T07 前置满足（可启动，但 T05 挂起注记仍适用） |
+| 2026-08-23 | T06 | #23 **用户反馈：badge 角标与 Tab 图标**。① 用户问「命令 Tab 旁为什么有 6 字」——即 T06 按设计文档 §2.2 实现的**命令总数 badge**（命令库 6 条）；用户选择**去掉 badge**。② 用户反馈 Tab 图标（`>_` 终端符号）与 better-sidebar 内置 terminal 图标**几乎一样、容易混淆** | ① **badge 移除**：`descriptor.badge` 与模块级 `mainTabBadgeCount` 删除，主形态 Tab 不再显示数字角标（设计文档 §2.2 badge 行标记移除；README/接入规范 §2.4 同步；t06 M3 断言改为「能力门与否均不注册 badge」）。② **图标更换**为「命令列表符号」：rect 外框 + 提示符 `m4 5.75 1.5 1.5L4 8.75` + 两行命令线 `M7.75 7.25h3.75`/`M4 12h4.5`，与终端（居中 `>_` + 顶部窄边窗口）明显区分（视觉规范 §3.2 同步）。真机复核：Tab 无角标、新图标生效、与 powershell 终端 Tab 明显可辨（截图 `t06-tab-no-badge-new-icon.png`）；回归 **121 项全过**（t06 14/14 更新后） |
 
 ## 已知风险登记（开工即知，随任务推进复核）
 

@@ -409,15 +409,11 @@ await check('M2 主形态注册：descriptor 字段（id/title/order/single/icon
   assert.strictEqual(svg.props['stroke-width'], '1.5')
 })
 
-await check('M3 badge 能力门：无 badge feature → 不注册 badge；有 → 命令总数（空库不显示）', async () => {
+await check('M3 badge 已按用户决策移除：无论能力门与否，descriptor 均无 badge（调整记录 #23）', async () => {
   const sNo = await bootScene({ features: [] })
-  assert.strictEqual(sNo.descriptor.badge, undefined, '无 badge 能力不注册 badge')
+  assert.strictEqual(sNo.descriptor.badge, undefined, '无 badge 注册')
   const s = await bootScene({ features: ['badge'] })
-  assert.strictEqual(typeof s.descriptor.badge, 'function')
-  assert.strictEqual(s.descriptor.badge(), null, '未加载数据时不显示')
-  mountTab(s, { scope: { sessionId: 's1', cwd: SAMPLE_CWD } })
-  await tick()
-  assert.strictEqual(s.descriptor.badge(), 3, '加载后命令总数')
+  assert.strictEqual(s.descriptor.badge, undefined, '有 badge 能力也不注册（用户决策移除命令总数角标）')
 })
 
 await check('M4 onActivate 能力门：无 tabLifecycle → 不注册；有 → 函数', async () => {

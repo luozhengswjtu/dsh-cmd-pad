@@ -122,8 +122,9 @@ ctx.effect(() => bs.registerTab({
   （状态/渲染/写操作/事件绑定），降级抽屉与主形态 Tab 分别以不同外壳挂载同一工厂产物；
   React 桥接组件（`require('react')`）仅做三件事——ref 挂纯 DOM 面板、scope（sessionId/cwd）
   deps 变化重挂、`visible` 变化转 `setVisible`（性能门：不可见时挂起 `renderAll`，恢复可见补渲染）。
-- **badge 用模块级缓存**：`badge` 是廉价纯函数（每次 tab 栏渲染调用，不能发 fetch）——
-  cmd-pad 在数据加载成功回调里更新模块级命令数缓存，badge 读缓存（空库/未加载返回 null 不显示）。
+- **badge 已移除（调整记录 #23）**：cmd-pad 不再注册 `badge`（用户决策：Tab 不显示命令总数角标）；
+  `features.includes('badge')` 能力门仍保留用于未来恢复（若恢复：badge 必须廉价纯函数，不能发
+  fetch——曾用模块级命令数缓存方案，见 git 历史）。
 - **onActivate 靠 panel 注册表**：桥接组件挂载时把 panel 实例登记到 `mainTabPanels[scopeKey]`
   （key = `sessionId|cwd`），`onActivate(tab, scope)` 按 key 取 panel 调 `refresh()` 拉最新命令库。
 - **插件设置**：cmd-pad 声明 `settings.pluginToggles`（`openToLastUsed` 开关），内容区经

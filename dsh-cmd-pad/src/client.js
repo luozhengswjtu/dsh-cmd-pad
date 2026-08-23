@@ -2577,7 +2577,9 @@ window.__ModuleLoader__.load({
       return bs
     }
 
-    /** 主形态 Tab 图标（视觉规范 §3.2：16 viewBox / 1.5px stroke / currentColor / round）。 */
+    /** 主形态 Tab 图标（视觉规范 §3.2：16 viewBox / 1.5px stroke / currentColor / round）。
+     *  命令列表造型（提示符 + 两行命令线）——与 better-sidebar 内置终端 `>_` 图标明显区分
+     *  （用户反馈 2026-08-23，TASK.md 调整记录 #23）。 */
     function createCmdPadIcon(createElement, size) {
       var px = typeof size === 'number' && size > 0 ? size : 16
       return createElement('svg', {
@@ -2591,19 +2593,19 @@ window.__ModuleLoader__.load({
         'stroke-linejoin': 'round',
         'aria-hidden': 'true',
       },
-        createElement('rect', { x: '1.25', y: '1.25', width: '13.5', height: '13.5', rx: '2.5' }),
-        createElement('path', { d: 'm4.5 5.5 2.5 2.5-2.5 2.5' }),
-        createElement('path', { d: 'M9 10.5h3' })
+        createElement('rect', { x: '1.5', y: '1.5', width: '13', height: '13', rx: '2.5' }),
+        createElement('path', { d: 'm4 5.75 1.5 1.5L4 8.75' }),
+        createElement('path', { d: 'M7.75 7.25h3.75' }),
+        createElement('path', { d: 'M4 12h4.5' })
       )
     }
 
-    // 主形态模块级状态：badge 命令数缓存（多会话多 Tab 共享命令库）；Tab 面板注册表（onActivate 定位）
-    var mainTabBadgeCount = null
+    // 主形态模块级状态：Tab 面板注册表（onActivate 定位刷新）
     var mainTabPanels = {}
 
     /**
      * 主形态：注册 better-sidebar Tab（T06）。内容区 = createCmdPadPanel 100% 复用。
-     * badge / onActivate / pluginToggles 均走 features 能力门（接入规范 §4）。
+     * onActivate / pluginToggles 走 features 能力门（接入规范 §4）。
      * require('react') 不可用返回 false，调用方回退降级形态（TASK.md T06 依赖调整点）。
      */
     function registerMainTab(ctx, bs) {
@@ -2615,7 +2617,6 @@ window.__ModuleLoader__.load({
       var useRef = React.useRef
 
       var features = (bs !== null && typeof bs === 'object' && Array.isArray(bs.features)) ? bs.features : []
-      var hasBadge = features.indexOf('badge') !== -1
       var hasLifecycle = features.indexOf('tabLifecycle') !== -1
       var hasPluginSettings = features.indexOf('pluginSettings') !== -1
 
@@ -2642,7 +2643,6 @@ window.__ModuleLoader__.load({
                 return (blob !== null && typeof blob === 'object' && blob[key] !== undefined) ? blob[key] : def
               } catch (error) { return def }
             } : function (key, def) { return def },
-            onDataLoaded: hasBadge ? function (count) { mainTabBadgeCount = count } : function () {},
             onEscapeTrailing: function () {},
           })
           panelRef.current = panel
@@ -2669,12 +2669,7 @@ window.__ModuleLoader__.load({
         single: true,
         component: CmdPadTab,
       }
-      if (hasBadge) {
-        // badge：廉价纯函数（每次 tab 栏渲染调用）；空库不显示（设计文档 §2.2）
-        descriptor.badge = function () {
-          return (mainTabBadgeCount !== null && mainTabBadgeCount > 0) ? mainTabBadgeCount : null
-        }
-      }
+      // badge 已按用户决策移除（TASK.md 调整记录 #23）：Tab 不显示命令总数角标
       if (hasLifecycle) {
         // onActivate：切回本 Tab 拉取最新命令库（多标签页/手改 yml 保鲜，§5.3）
         descriptor.onActivate = function (tab, scope) {
