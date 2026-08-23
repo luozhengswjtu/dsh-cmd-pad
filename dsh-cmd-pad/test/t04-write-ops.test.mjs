@@ -425,12 +425,13 @@ await check('D3 defaultCheckedGroups：视图语境默认勾选规则（§3.5）
   // all：上次使用失效 → 当前项目
   const stale = { ...SAMPLE_STATE, lastUsedViewId: 'group:gone' }
   assert.deepStrictEqual(t.defaultCheckedGroups('all', model, stale, SAMPLE_CWD), [SAMPLE_CWD])
-  // all：无 cwd → 「常用」分组（如果存在）
+  // all：无 cwd 且上次使用失效 → 空（原「常用」兜底已移除，调整记录 #28——
+  // 「常用」概念已由「上次使用」视图取代，defaultCheckedGroups 不再找名为「常用」的分组）
   const noCwd = t.buildGroupModel(SAMPLE_LIBRARY, SAMPLE_STATE, null)
   assert.deepStrictEqual(t.defaultCheckedGroups('all', noCwd, stale, null), []) // SAMPLE 无「常用」分组
   const libWithCommon = { commands: [{ id: 'x', title: 'x', cmd: 'x', groups: ['常用'] }] }
   const mCommon = t.buildGroupModel(libWithCommon, SAMPLE_STATE, null)
-  assert.deepStrictEqual(t.defaultCheckedGroups('all', mCommon, stale, null), ['常用'])
+  assert.deepStrictEqual(t.defaultCheckedGroups('all', mCommon, stale, null), [], '即使存在「常用」分组也不回退（概念已取代）')
 })
 
 await check('D4 deletionPlan：解关联 vs 彻底删除（§3.5 语境语义）', async () => {
@@ -501,7 +502,7 @@ await check('E2 分组视图点 + 添加 → 表单弹窗，默认勾选当前�
 
 await check('E3 全部视图点添加 → 默认勾选上次使用的分组', async () => {
   const s = await bootScene({})
-  clickGroup(s, 'all') // 切到全部视图语境（§3.5：全部/搜索态默认勾选 上次使用 → 当前项目 → 常用）
+  clickGroup(s, 'all') // 切到全部视图语境（§3.5：全部/搜索态默认勾选 上次使用 → 当前项目；原「常用」兜底已移除，调整记录 #28）
   openAdd(s)
   const modal = modalEl(s)
   const checked = findAllAttr(modal, 'data-checked', 'true', [])

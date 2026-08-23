@@ -157,6 +157,61 @@ window.__ModuleLoader__.load({
       '  padding:8px 10px;',
       '  -webkit-app-region:no-drag;',
       '}',
+      // ── 「上次使用」视图工具栏（调整记录 #28）：范围切换（项目|全部）+ ⓘ 帮助 ──
+      '.cmd-pad-recent-toolbar{',
+      '  flex:none;',
+      '  display:flex;',
+      '  align-items:center;',
+      '  gap:6px;',
+      '  margin-bottom:8px;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-scope-toggle{',
+      '  display:inline-flex;',
+      '  align-items:center;',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  border-radius:6px;',
+      '  overflow:hidden;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-scope-opt{',
+      '  border:none;',
+      '  background:transparent;',
+      '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
+      '  font-size:12px;',
+      '  line-height:1.4;',
+      '  padding:3px 10px;',
+      '  cursor:pointer;',
+      '  user-select:none;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-scope-opt:hover{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '}',
+      '.cmd-pad-scope-opt-active{',
+      '  background:var(--dsw-alias-interactive-bg-active,var(--cp-interactive-bg-active,#34373e));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '}',
+      '.cmd-pad-help{',
+      '  display:inline-flex;',
+      '  align-items:center;',
+      '  justify-content:center;',
+      '  width:20px;',
+      '  height:20px;',
+      '  border:none;',
+      '  background:transparent;',
+      '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
+      '  cursor:help;',
+      '  border-radius:4px;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-help:hover{',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '}',
+      '.cmd-pad-help svg{',
+      '  flex:none;',
+      '}',
       // ── T03：搜索栏 ──
       '.cmd-pad-search{',
       '  flex:none;', // column 布局下不拉伸：搜索栏固定在上方一行
@@ -861,6 +916,7 @@ window.__ModuleLoader__.load({
     /** 视图有效性（分组消失 / 项目消失 → 视图失效；无命令常驻分组仍有效，§3.3）。 */
     function isValidView(viewId, model) {
       if (viewId === 'all') return true
+      if (viewId === 'recent') return true // 「上次使用」为常驻动态视图（调整记录 #28）
       if (viewId === 'current-project') return !!model.cwd
       if (viewId === 'ungrouped') return model.hasUngrouped
       if (viewId.slice(0, 6) === 'group:') {
@@ -974,11 +1030,52 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * 「上次使用」视图（用户定稿 2026-08-2x，调整记录 #28）：
+     * 动态最近使用命令视图（替换原「常用」分组概念），**保留 100 条、显示 20 条**，
+     * 复制/运行即记录；范围可切换 项目/全部（仅当前项目 vs 所有项目）。
+     */
+    var RECENT_CAP = 100
+    var RECENT_SHOW = 20
+
+    /** 去重置顶 + 保留上限（同命令重复使用移到最前，旧记录顺延）。 */
+    function pushRecent(recent, cmdId) {
+      var arr = Array.isArray(recent) ? recent.slice() : []
+      var next = [{ id: cmdId, at: Date.now() }]
+      for (var i = 0; i < arr.length; i++) {
+        if (arr[i] !== null && typeof arr[i] === 'object' && arr[i].id === cmdId) continue
+        next.push(arr[i])
+      }
+      if (next.length > RECENT_CAP) next.length = RECENT_CAP
+      return next
+    }
+
+    /** 解析「上次使用」视图命令：按记录倒序解析到命令库（已删除的命令跳过），
+     *  scope='project' 时仅保留属于当前项目（groups 含 cwd）的命令；最多返回 limit 条。 */
+    function recentCommandsView(commands, recent, scope, cwd, limit) {
+      var list = Array.isArray(commands) ? commands : []
+      var byId = {}
+      for (var i = 0; i < list.length; i++) byId[list[i].id] = list[i]
+      var recs = Array.isArray(recent) ? recent : []
+      var out = []
+      var cap = (typeof limit === 'number' && limit > 0) ? limit : RECENT_SHOW
+      for (var j = 0; j < recs.length && out.length < cap; j++) {
+        var rec = recs[j]
+        if (rec === null || typeof rec !== 'object' || typeof rec.id !== 'string') continue
+        var cmd = byId[rec.id]
+        if (cmd === undefined) continue
+        if (scope === 'project' && (cmd.groups || []).indexOf(cwd) === -1) continue
+        out.push(cmd)
+      }
+      return out
+    }
+
+    /**
      * 添加表单默认勾选分组（设计文档 §3.5）：
      *  - group:<x> 视图 → [x]（含不常驻分组——「提升展示并默认勾选」）；
      *  - current-project 视图 → [cwd]；
      *  - ungrouped 视图 → []（保持未分组）；
-     *  - all / 搜索态 → 上次使用的分组 → 当前项目 → 常用（取第一个存在的）。
+     *  - all / 搜索态 → 上次使用的分组 → 当前项目（取第一个存在的；原「常用」
+     *    兜底按用户定稿移除，调整记录 #28——「常用」概念已由「上次使用」视图取代）。
      */
     function defaultCheckedGroups(viewId, model, state, cwd) {
       if (viewId.slice(0, 6) === 'group:') {
@@ -994,7 +1091,6 @@ window.__ModuleLoader__.load({
         if (model.groupSet[lu]) return [lu]
       }
       if (cwd && model.groupSet[cwd]) return [cwd]
-      if (model.groupSet['常用']) return ['常用']
       return []
     }
 
@@ -1109,6 +1205,18 @@ window.__ModuleLoader__.load({
       '     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
       '  <circle cx="7" cy="7" r="4.5"/>',
       '  <path d="m10.5 10.5 3 3"/>',
+      '</svg>',
+    ].join('')
+
+    // 「上次使用」视图范围帮助图标 ⓘ（用户定稿 2026-08-2x：小圆形 + 空心问号；
+    // 视觉规范 §3.2 同款规格：16 viewBox / 1.5px stroke / currentColor / round caps）
+    var HELP_SVG = [
+      '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"',
+      '     stroke="currentColor" stroke-width="1.5"',
+      '     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+      '  <circle cx="8" cy="8" r="6.25"/>',
+      '  <path d="M6.1 6.25a1.95 1.95 0 1 1 3.55 1.05c-.75.85-1.6 1.1-1.6 2.3"/>',
+      '  <path d="M8 12.5h.01"/>',
       '</svg>',
     ].join('')
 
@@ -1746,17 +1854,6 @@ window.__ModuleLoader__.load({
       })
     }
 
-    /** 复制成功后刷新「上次使用」（功能文档 §3.4）：PUT /api/state，失败静默。 */
-    function persistLastUsed(viewId) {
-      try {
-        window.fetch('/cmd-pad/api/state', {
-          method: 'PUT',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ lastUsedViewId: viewId, viewLastUsedAt: { [viewId]: Date.now() } }),
-        }).catch(function () {})
-      } catch (error) { /* 静默：状态刷新失败不影响复制 */ }
-    }
-
     // ════════════════════════════════════════════════════════════════════
     // T07 终端直写运行通道（主形态；接入规范 §3 协议，v0.13.1 实机实证）
     //
@@ -1802,6 +1899,25 @@ window.__ModuleLoader__.load({
       if (node.right !== null && node.right !== undefined) collectLeafTabs(node.right, out)
     }
 
+    /** 底部树任意既有 tab（排除 agent:）：用于把运行终端强制落到底部栏（调整记录 #28）。
+     *  better-sidebar 公开 API 不支持指定面板落点（openTab 落在 activePane），
+     *  做法 = 先 activateTab 底部树任一 tab（activateTab 会把 activePane 切到该 pane），
+     *  再 openTab 即落在底部树。 */
+    function firstBottomTab(snapshot) {
+      if (snapshot === null || typeof snapshot !== 'object') return null
+      var state = snapshot.state
+      if (state === null || typeof state !== 'object') return null
+      var tabs = []
+      collectLeafTabs(state.bottomSplits, tabs)
+      for (var i = 0; i < tabs.length; i++) {
+        var t = tabs[i]
+        if (t === null || typeof t !== 'object') continue
+        if (String(t.id).startsWith('agent:')) continue
+        return t
+      }
+      return null
+    }
+
     /** 新开终端识别：after 中 id 不在 before 里的终端 tab（openTab 刚 mint 的那个）。 */
     function pickNewTerminalTab(before, after) {
       if (!Array.isArray(after)) return null
@@ -1836,12 +1952,13 @@ window.__ModuleLoader__.load({
 
     /**
      * 创建终端直写运行器（主形态专用）。
-     * @param bs      better-sidebar 服务实例（getSnapshot/openTab/activateTab）
+     * @param bs      better-sidebar 服务实例（getSnapshot/openTab/activateTab/closeTab）
      * @param scopeFn () => ({ sessionId, cwd }) 当前 Tab scope
      * @param toast   (msg, kind) 提示
      * @param copyText (text, onDone) 复制（降级链末端）
+     * @param onSuccess (cmd) 可选：运行成功回调（「上次使用」视图记录等）
      */
-    function createTerminalRunner(bs, scopeFn, toast, copyTextFn) {
+    function createTerminalRunner(bs, scopeFn, toast, copyTextFn, onSuccess) {
       // 总超时须覆盖「open → 等 shell 就绪 → 发送」全程（实机教训：PowerShell 冷启动
       // 可达 7s+，若总超时小于就绪等待，会先触发 fallback 而误杀本应成功的运行）
       var WS_TIMEOUT_MS = 30000
@@ -1855,14 +1972,20 @@ window.__ModuleLoader__.load({
       }
 
       function success(cmd) {
+        // 运行成功 → onSuccess（「上次使用」记录；失败不记录，避免把降级当使用）
+        if (typeof onSuccess === 'function') {
+          try { onSuccess(cmd) } catch (error) { /* 忽略 */ }
+        }
         toast(cmd.danger === true ? '已写入终端，请在终端内确认后回车' : '已发送到终端')
       }
 
       /**
        * 运行一条命令：
-       * 1. openTab 新开专用终端 → 从新 snapshot 差集识别新终端 tab id；
-       * 2. WS 附加 → 发送（危险不带 \r）→ 立即 bare drop（不发 {type:'close'} 帧）；
-       * 3. 任一步失败 → 复制 + Toast。
+       * 1. （调整记录 #28）底部面板打开且有既有 tab 时，先激活底部树任一 tab，把
+       *    activePane 切到底部树——保证新终端**无论 cmd-pad 停靠在哪都落在底部栏**；
+       * 2. openTab 新开专用终端 → 从新 snapshot 差集识别新终端 tab id；
+       * 3. WS 附加 → 发送（危险不带 \r）→ 保持连接不 drop（实机教训，防 grace 杀 pty）；
+       * 4. 任一步失败 → 复制 + Toast。
        */
       function run(cmd) {
         var scope = (typeof scopeFn === 'function') ? scopeFn() : {}
@@ -1875,6 +1998,17 @@ window.__ModuleLoader__.load({
         var after = []
         try {
           var snapBefore = bs.getSnapshot()
+          // 用户决策（调整记录 #28）：运行终端一律落在底部栏。底部面板打开
+          // （bottomOpen=true）且底部树有既有 tab 时，先激活它切 activePane 到底部树；
+          // 底部面板关闭 / 无底部 tab 时降级为当前行为（落在 activePane，尽力而为）。
+          var st = (snapBefore !== null && typeof snapBefore === 'object') ? snapBefore.state : null
+          if (st !== null && typeof st === 'object' && st.bottomOpen === true) {
+            var bt = firstBottomTab(snapBefore)
+            if (bt !== null) {
+              try { bs.activateTab(bt.id, { sessionId: sessionId }) } catch (error) { /* 忽略 */ }
+              snapBefore = bs.getSnapshot()
+            }
+          }
           before = terminalTabsOf(snapBefore)
           var scopeArg = { sessionId: sessionId }
           if (cwd !== '') scopeArg.cwd = cwd
@@ -1973,7 +2107,7 @@ window.__ModuleLoader__.load({
         })
       }
 
-      return { run: run, terminalTabsOf: terminalTabsOf, pickNewTerminalTab: pickNewTerminalTab, terminalWsUrl: terminalWsUrl, terminalSendText: terminalSendText }
+      return { run: run, terminalTabsOf: terminalTabsOf, pickNewTerminalTab: pickNewTerminalTab, terminalWsUrl: terminalWsUrl, terminalSendText: terminalSendText, firstBottomTab: firstBottomTab }
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -2178,9 +2312,10 @@ window.__ModuleLoader__.load({
 
       // ── T03/T04 状态 ──
       var data = null               // { library, state, cwd, mtime }
-      var activeView = 'all'        // all | current-project | ungrouped | group:<name>
+      var activeView = 'all'        // all | recent | current-project | ungrouped | group:<name>
       var searchQuery = ''          // 非空 = 搜索态
       var moreExpanded = false
+      var recentScope = 'all'       // 「上次使用」视图范围（调整记录 #28）：all | project（state 持久化）
       var toast = createToast(opts.toastRoot || body)
       var overlay = null            // 弹窗遮罩（表单/确认）
       var undoState = null          // { snapshot, timer } 删除撤销（5s）
@@ -2191,7 +2326,8 @@ window.__ModuleLoader__.load({
       // ── T07 运行通道（仅主形态）：better-sidebar + scope 访问器 → 终端直写运行器 ──
       var runner = null             // { run(cmd) }；null = 无运行入口（降级形态，只复制）
       if (opts.betterSidebar !== null && opts.betterSidebar !== undefined && typeof opts.scope === 'function') {
-        runner = createTerminalRunner(opts.betterSidebar, opts.scope, toast, copyText)
+        // onSuccess：运行成功 → 记录「上次使用」视图（调整记录 #28）
+        runner = createTerminalRunner(opts.betterSidebar, opts.scope, toast, copyText, recordUsage)
       }
       var runEnabled = runner !== null
       runEnabledFlag = runEnabled
@@ -2260,6 +2396,10 @@ window.__ModuleLoader__.load({
           if (!any) contentEl.appendChild(emptyEl('等待添加'))
           return
         }
+        if (activeView === 'recent') {
+          renderRecentView(commands)
+          return
+        }
         var cmds = commandsForView(commands, activeView, data.cwd)
         if (cmds.length === 0) {
           if (activeView === 'current-project') contentEl.appendChild(emptyEl('当前项目还没有命令'))
@@ -2268,6 +2408,55 @@ window.__ModuleLoader__.load({
           return
         }
         for (var k = 0; k < cmds.length; k++) contentEl.appendChild(cardEl(cmds[k], null))
+      }
+
+      /**
+       * 「上次使用」视图（调整记录 #28）：范围切换（项目/全部）+ ⓘ 帮助（悬停提示），
+       * 命令 = 最近使用记录解析（保留 100 条、显示 20 条，已删除命令跳过）。
+       */
+      function renderRecentView(commands) {
+        var recs = Array.isArray(data.state.recentCommands) ? data.state.recentCommands : []
+        var cmds = recentCommandsView(commands, recs, recentScope, data.cwd, RECENT_SHOW)
+        // 视图工具栏：范围切换（项目 | 全部）+ ⓘ 帮助（悬停提示该切换的作用，简短语言）
+        var toolbar = el('div', 'cmd-pad-recent-toolbar')
+        var seg = el('div', 'cmd-pad-scope-toggle')
+        seg.setAttribute('role', 'group')
+        seg.setAttribute('aria-label', '最近使用命令范围')
+        var optProj = el('button', 'cmd-pad-scope-opt' + (recentScope === 'project' ? ' cmd-pad-scope-opt-active' : ''), '项目')
+        optProj.type = 'button'
+        optProj.title = '仅当前项目'
+        optProj.setAttribute('aria-pressed', recentScope === 'project' ? 'true' : 'false')
+        optProj.addEventListener('click', function () { setRecentScope('project') })
+        seg.appendChild(optProj)
+        var optAll = el('button', 'cmd-pad-scope-opt' + (recentScope === 'all' ? ' cmd-pad-scope-opt-active' : ''), '全部')
+        optAll.type = 'button'
+        optAll.title = '所有项目'
+        optAll.setAttribute('aria-pressed', recentScope === 'all' ? 'true' : 'false')
+        optAll.addEventListener('click', function () { setRecentScope('all') })
+        seg.appendChild(optAll)
+        toolbar.appendChild(seg)
+        var help = el('button', 'cmd-pad-help')
+        help.type = 'button'
+        help.title = '切换范围：项目＝仅当前项目，全部＝所有项目'
+        help.setAttribute('aria-label', '切换作用说明')
+        help.innerHTML = HELP_SVG
+        toolbar.appendChild(help)
+        contentEl.appendChild(toolbar)
+        if (cmds.length === 0) {
+          if (recs.length === 0) contentEl.appendChild(emptyEl('还没有使用记录'))
+          else contentEl.appendChild(emptyEl('当前项目还没有使用记录'))
+          return
+        }
+        for (var i = 0; i < cmds.length; i++) contentEl.appendChild(cardEl(cmds[i], null))
+      }
+
+      /** 「上次使用」范围切换：本地即时 + state 持久化 + 重渲染。 */
+      function setRecentScope(scope) {
+        if (scope !== 'project' && scope !== 'all') return
+        recentScope = scope
+        data.state.recentScope = scope
+        persistState({ recentScope: scope })
+        renderAll()
       }
 
       function renderGroups() {
@@ -2280,6 +2469,8 @@ window.__ModuleLoader__.load({
           var cwdDisplay = model.displayNames[model.cwd] || pathBase(model.cwd)
           groupsEl.appendChild(groupRow('项目：', cwdDisplay, null, 'current-project', activeView === 'current-project'))
         }
+        // 用户定稿（调整记录 #28）：「上次使用」动态视图（替换原「常用」分组概念）
+        groupsEl.appendChild(groupRow(null, '上次使用', null, 'recent', activeView === 'recent'))
         if (model.hasUngrouped) {
           groupsEl.appendChild(groupRow(null, '未分组', null, 'ungrouped', activeView === 'ungrouped'))
         }
@@ -2340,6 +2531,8 @@ window.__ModuleLoader__.load({
             cwd: (payload !== null && typeof payload === 'object' && typeof payload.cwd === 'string' && payload.cwd !== '') ? payload.cwd : (opts.cwd || null),
             mtime: payload !== null ? payload.mtime : null,
           }
+          // 「上次使用」范围（state 持久化，缺省全部）
+          recentScope = data.state.recentScope === 'project' ? 'project' : 'all'
           loadState('ready')
           var model = currentModel()
           if (pendingInitialView) {
@@ -2388,24 +2581,39 @@ window.__ModuleLoader__.load({
 
       /**
        * 复制语境下的 lastUsed 视图（功能文档 §3.4）：
-       * 「全部」/「未分组」视图 → 命令第一个所属分组（'all' 不作为 lastUsed 存储）。
+       * 「全部」/「未分组」/「上次使用」视图 → 命令第一个所属分组（这些视图不作为 lastUsed 存储）。
        */
       function viewIdForLastUsed(cmd) {
         var viewId = activeView
-        if (viewId === 'all' || viewId === 'ungrouped') {
+        if (viewId === 'all' || viewId === 'ungrouped' || viewId === 'recent') {
           var firstGroup = (cmd.groups !== null && Array.isArray(cmd.groups) && cmd.groups.length > 0) ? cmd.groups[0] : null
           if (firstGroup !== null) viewId = 'group:' + firstGroup
         }
         return viewId
       }
 
-      /** 刷新「上次使用」slot（§3.4）：本地即时 + 远端持久化 + 重渲染。 */
+      /** 刷新「上次使用」（§3.4 + 调整记录 #28）：lastUsedViewId + 最近使用命令记录。 */
       function applyLastUsed(cmd) {
         var viewId = viewIdForLastUsed(cmd)
         data.state.lastUsedViewId = viewId
         if (data.state.viewLastUsedAt === null || typeof data.state.viewLastUsedAt !== 'object') data.state.viewLastUsedAt = {}
         data.state.viewLastUsedAt[viewId] = Date.now()
-        persistLastUsed(viewId)
+        // 「上次使用」视图：复制即记录（去重置顶，保留 100 条）
+        data.state.recentCommands = pushRecent(data.state.recentCommands, cmd.id)
+        persistState({
+          lastUsedViewId: viewId,
+          viewLastUsedAt: data.state.viewLastUsedAt,
+          recentCommands: data.state.recentCommands,
+        })
+        renderAll()
+      }
+
+      /** 运行成功也记录「上次使用」（runner onSuccess 回调；失败路径不记录）。 */
+      function recordUsage(cmd) {
+        if (data === null) return
+        if (cmd === null || typeof cmd !== 'object' || typeof cmd.id !== 'string') return
+        data.state.recentCommands = pushRecent(data.state.recentCommands, cmd.id)
+        persistState({ recentCommands: data.state.recentCommands })
         renderAll()
       }
 
@@ -3100,6 +3308,9 @@ window.__ModuleLoader__.load({
       generateCommandId: generateCommandId,
       dangerKeywordHits: dangerKeywordHits,
       defaultCheckedGroups: defaultCheckedGroups,
+      // 「上次使用」视图（调整记录 #28）
+      pushRecent: pushRecent,
+      recentCommandsView: recentCommandsView,
       deletionPlan: deletionPlan,
       groupDeletionPlan: groupDeletionPlan,
       renameGroup: renameGroup,
@@ -3110,6 +3321,7 @@ window.__ModuleLoader__.load({
       pickNewTerminalTab: pickNewTerminalTab,
       terminalWsUrl: terminalWsUrl,
       terminalSendText: terminalSendText,
+      firstBottomTab: firstBottomTab,
       createTerminalRunner: createTerminalRunner,
     }
     return module.exports

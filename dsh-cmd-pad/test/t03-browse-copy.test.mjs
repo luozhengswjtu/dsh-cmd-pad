@@ -196,10 +196,13 @@ async function bootScene(opts = {}) {
   const fetchCalls = []
   const statePuts = []
   const clipboardTexts = []
+  // 深拷贝隔离：client 运行时会改写 data.state（如 recentCommands / lastUsedViewId），
+  // 共享 SAMPLE_STATE/SAMPLE_LIBRARY 会让用例间串扰（调整记录 #28 用例发现）
+  const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)))
   const libraryPayload = {
     ok: true,
-    library: opts.library !== undefined ? opts.library : SAMPLE_LIBRARY,
-    state: opts.state !== undefined ? opts.state : SAMPLE_STATE,
+    library: clone(opts.library !== undefined ? opts.library : SAMPLE_LIBRARY),
+    state: clone(opts.state !== undefined ? opts.state : SAMPLE_STATE),
     cwd: opts.cwd !== undefined ? opts.cwd : SAMPLE_CWD,
     mtime: 123,
   }
@@ -464,6 +467,54 @@ await check('A9 getCurrentSessionId：探测 sessions 取 current；无服务返
   assert.strictEqual(t.getCurrentSessionId({}), '')
 })
 
+await check('A10 pushRecent：「上次使用」记录去重置顶 + 保留上限 100（调整记录 #28）', async () => {
+  const t = await testableOf({})
+  // 空记录 → 新增
+  const one = t.pushRecent([], 'cmd-a')
+  assert.deepStrictEqual(one.map((r) => r.id), ['cmd-a'])
+  // 重复使用 → 置顶（旧记录顺延，不重复）
+  const two = t.pushRecent([{ id: 'cmd-b', at: 1 }, { id: 'cmd-a', at: 2 }], 'cmd-b')
+  assert.deepStrictEqual(two.map((r) => r.id), ['cmd-b', 'cmd-a'])
+  // 上限 100：105 条 + 置顶 c0 → 100 条且 c0 在首位
+  const base = []
+  for (let i = 0; i < 105; i++) base.push({ id: 'c' + i, at: i })
+  const capped = t.pushRecent(base, 'c0')
+  assert.strictEqual(capped.length, 100, '保留上限 100 条')
+  assert.strictEqual(capped[0].id, 'c0')
+  assert.strictEqual(capped[1].id, 'c1')
+  // 非数组容错
+  assert.deepStrictEqual(t.pushRecent(null, 'x').map((r) => r.id), ['x'])
+})
+
+await check('A11 recentCommandsView：倒序解析 / 已删除跳过 / 项目过滤 / 显示上限 20', async () => {
+  const t = await testableOf({})
+  const cmds = SAMPLE_LIBRARY.commands
+  const recs = [
+    { id: 'deleted-cmd', at: 900 }, // 库里不存在 → 跳过
+    { id: 'top-mem', at: 800 },     // groups: [perf, common] → 非当前项目
+    { id: 'proj-run', at: 700 },    // groups: [D:\work\car_media] = 当前项目
+    { id: 'multi-line', at: 600 },  // groups: [common] → 非当前项目
+  ]
+  assert.deepStrictEqual(t.recentCommandsView(cmds, recs, 'all', SAMPLE_CWD, 20).map((c) => c.id), ['top-mem', 'proj-run', 'multi-line'], '全部范围：跳过已删除，按记录倒序')
+  assert.deepStrictEqual(t.recentCommandsView(cmds, recs, 'project', SAMPLE_CWD, 20).map((c) => c.id), ['proj-run'], '项目范围：仅当前项目')
+  assert.strictEqual(t.recentCommandsView(cmds, recs, 'all', SAMPLE_CWD, 1).length, 1, 'limit 生效（显示 20 条以内可截断）')
+  assert.strictEqual(t.recentCommandsView([], recs, 'all', SAMPLE_CWD, 20).length, 0, '空命令库 → 空')
+  assert.strictEqual(t.recentCommandsView(cmds, null, 'all', SAMPLE_CWD, 20).length, 0, '无记录 → 空')
+})
+
+await check('A12 defaultCheckedGroups：all/搜索态兜底不再回退「常用」分组（调整记录 #28）', async () => {
+  const t = await testableOf({})
+  const m = t.buildGroupModel(SAMPLE_LIBRARY, SAMPLE_STATE, SAMPLE_CWD)
+  // lastUsed=group:perf 有效 → 默认勾选 perf
+  assert.deepStrictEqual(t.defaultCheckedGroups('all', m, SAMPLE_STATE, SAMPLE_CWD), ['perf'])
+  // lastUsed 失效 → 当前项目
+  const stale = { pinnedGroups: [], lastUsedViewId: 'group:gone', viewLastUsedAt: {} }
+  assert.deepStrictEqual(t.defaultCheckedGroups('all', m, stale, SAMPLE_CWD), [SAMPLE_CWD])
+  // 即使库里存在名为「常用」的分组也不再兜底（概念已被「上次使用」视图取代）
+  const m2 = t.buildGroupModel({ commands: [{ id: 'x', title: 'x', cmd: 'x', groups: ['常用'] }] }, {}, SAMPLE_CWD)
+  assert.deepStrictEqual(t.defaultCheckedGroups('all', m2, { pinnedGroups: [], lastUsedViewId: '', viewLastUsedAt: {} }, SAMPLE_CWD), [])
+})
+
 // ════════════════════════════════════════════════════════════════════════
 // B. DOM 渲染
 // ════════════════════════════════════════════════════════════════════════
@@ -476,11 +527,11 @@ await check('B1 打开抽屉 → fetch /cmd-pad/api/library 一次，带 session
   assert.strictEqual(s.drawer.getAttribute('data-open'), 'true')
 })
 
-await check('B2 侧栏结构：全部 / 项目： / 常驻分组 / 更多箭头（仅图标，调整记录 #26；无「上次使用」标签，调整记录 #17）', async () => {
+await check('B2 侧栏结构：全部 / 项目： / 上次使用 / 常驻分组 / 更多箭头（调整记录 #26/#28）', async () => {
   const s = await bootScene({})
   const rows = groupRowTexts(s)
-  assert.deepStrictEqual(rows, ['全部', '项目：car_media', 'common', 'perf'])
-  assert.strictEqual(find(s.groupsEl, '.cmd-pad-last-slot'), null, '不应有上次使用 slot 标签')
+  assert.deepStrictEqual(rows, ['全部', '项目：car_media', '上次使用', 'common', 'perf'])
+  assert.strictEqual(find(s.groupsEl, '.cmd-pad-last-slot'), null, '不应有上次使用 slot 标签（#17 语义：打开即定位）')
   const more = find(s.groupsEl, '.cmd-pad-more-toggle')
   assert.ok(more !== null, '应有更多箭头')
   // 调整记录 #26：仅箭头（无「更多」文字）；折叠态 ▸ 指向右侧隐藏内容；计数入 title
@@ -498,13 +549,13 @@ await check('B3 更多展开 → 其他项目（消歧名 + 最近使用倒序�
   const more = find(s.groupsEl, '.cmd-pad-more-toggle')
   s.groupsEl.listeners.click.forEach((fn) => fn({ target: more }))
   const rows = groupRowTexts(s)
-  // 顶层行
-  assert.deepStrictEqual(rows.slice(0, 4), ['全部', '项目：car_media', 'common', 'perf'])
+  // 顶层行（含「上次使用」视图 chip，调整记录 #28）
+  assert.deepStrictEqual(rows.slice(0, 5), ['全部', '项目：car_media', '上次使用', 'common', 'perf'])
   // 小节标题：仅「其他项目」（「分组」标题已移除）
   const sections = collect(s.groupsEl, '.cmd-pad-more-section', []).map((x) => x.textContent)
   assert.deepStrictEqual(sections, ['其他项目'])
   // 更多内行：其他项目（最近使用倒序：E 300 前于 D 100）+ 不常驻分组
-  assert.deepStrictEqual(rows.slice(4), ['docs / Temp_Code', 'other / Temp_Code', 'logs'])
+  assert.deepStrictEqual(rows.slice(5), ['docs / Temp_Code', 'other / Temp_Code', 'logs'])
   // 折叠计数：2 其他项目 + 1 不常驻分组 = 3；展开态 ◂ 指向收起方向
   const t = find(s.groupsEl, '.cmd-pad-more-toggle')
   assert.strictEqual(t.textContent, '◂')
@@ -635,6 +686,91 @@ await check('B14 分组视图空态：常驻分组无命令', async () => {
   assert.deepStrictEqual(cardIds(s2), ['orphan'])
 })
 
+await check('B15 「上次使用」视图：工具栏（项目|全部 切换 + ⓘ 帮助）+ 空态（调整记录 #28）', async () => {
+  const s = await bootScene({})
+  clickGroup(s, 'recent')
+  // 视图工具栏：范围切换 = 项目 | 全部（默认全部激活）
+  const opts = collect(s.contentEl, '.cmd-pad-scope-opt', [])
+  assert.strictEqual(opts.length, 2, '两个范围选项')
+  assert.strictEqual(opts[0].textContent, '项目')
+  assert.strictEqual(opts[1].textContent, '全部')
+  assert.ok(opts[1].className.includes('cmd-pad-scope-opt-active'), '默认范围 = 全部')
+  // ⓘ 帮助：小圆 + 空心问号 SVG + 悬停 title（简短语言提示切换作用）
+  const help = find(s.contentEl, '.cmd-pad-help')
+  assert.ok(help !== null, '应有 ⓘ 帮助按钮')
+  assert.ok(help.innerHTML.includes('<svg') && help.innerHTML.includes('<circle'), 'ⓘ 为圆形 SVG')
+  assert.ok(help.title.includes('项目') && help.title.includes('全部'), `ⓘ title 应提示切换作用（实际 ${help.title}）`)
+  // 无使用记录 → 空态
+  const empty = find(s.contentEl, '.cmd-pad-empty')
+  assert.strictEqual(empty.textContent, '还没有使用记录')
+})
+
+await check('B16 复制命令 → 记录「上次使用」并持久化；视图按记录倒序显示', async () => {
+  const s = await bootScene({})
+  clickGroup(s, 'group:common')
+  clickCardButton(s, 'multi-line')
+  await tick()
+  const put = s.statePuts[s.statePuts.length - 1]
+  assert.ok(Array.isArray(put.recentCommands), 'state PUT 应含 recentCommands')
+  assert.strictEqual(put.recentCommands[0].id, 'multi-line', '复制即记录')
+  assert.ok(typeof put.recentCommands[0].at === 'number', '记录带时间戳')
+  // 打开「上次使用」视图 → 显示该命令
+  clickGroup(s, 'recent')
+  assert.deepStrictEqual(cardIds(s), ['multi-line'])
+})
+
+await check('B17 「上次使用」范围切换：项目过滤 + 持久化 + 重开保持', async () => {
+  const recs = [
+    { id: 'top-mem', at: 300 },    // groups [perf, common] → 非当前项目
+    { id: 'proj-run', at: 200 },   // groups [D:\work\car_media] → 当前项目
+    { id: 'multi-line', at: 100 }, // groups [common] → 非当前项目
+  ]
+  const s = await bootScene({ state: { ...SAMPLE_STATE, recentCommands: recs } })
+  clickGroup(s, 'recent')
+  assert.deepStrictEqual(cardIds(s), ['top-mem', 'proj-run', 'multi-line'], '全部范围：按记录倒序')
+  // 切到「项目」→ 仅当前项目命令
+  const opts = collect(s.contentEl, '.cmd-pad-scope-opt', [])
+  opts[0].listeners.click.forEach((fn) => fn({ target: opts[0] }))
+  await tick()
+  assert.deepStrictEqual(cardIds(s), ['proj-run'], '项目范围：仅当前项目')
+  const optsAfter = collect(s.contentEl, '.cmd-pad-scope-opt', [])
+  assert.ok(optsAfter[0].className.includes('cmd-pad-scope-opt-active'), '「项目」激活')
+  // 范围持久化到 state
+  const put = s.statePuts[s.statePuts.length - 1]
+  assert.strictEqual(put.recentScope, 'project')
+  // 重开 → 范围保持 project（aria-pressed 标注）
+  const s2 = await bootScene({ state: { ...SAMPLE_STATE, recentCommands: recs, recentScope: 'project' } })
+  clickGroup(s2, 'recent')
+  assert.deepStrictEqual(cardIds(s2), ['proj-run'])
+  const opts2 = collect(s2.contentEl, '.cmd-pad-scope-opt', [])
+  assert.strictEqual(opts2[0].getAttribute('aria-pressed'), 'true', '项目为按下态')
+  assert.strictEqual(opts2[1].getAttribute('aria-pressed'), 'false')
+})
+
+await check('B18 「上次使用」视图下复制 → lastUsed 指向命令第一个分组（§3.4 语境语义）', async () => {
+  const s = await bootScene({ state: { ...SAMPLE_STATE, recentCommands: [{ id: 'proj-run', at: 200 }] } })
+  clickGroup(s, 'recent')
+  clickCardButton(s, 'proj-run')
+  await tick()
+  const put = s.statePuts[s.statePuts.length - 1]
+  assert.strictEqual(put.lastUsedViewId, 'group:D:\\work\\car_media', 'recent 视图复制 → lastUsed = 命令第一个所属分组')
+  // 同时更新 recentCommands（置顶 proj-run）
+  assert.strictEqual(put.recentCommands[0].id, 'proj-run')
+})
+
+await check('B19 「上次使用」视图：项目范围空态（有记录但当前项目无）+ 删除命令不显示', async () => {
+  const s = await bootScene({ state: { ...SAMPLE_STATE, recentCommands: [{ id: 'top-mem', at: 300 }, { id: 'gone-cmd', at: 200 }], recentScope: 'project' } })
+  clickGroup(s, 'recent')
+  // gone-cmd 已删除跳过；top-mem 非当前项目 → 项目范围空
+  const empty = find(s.contentEl, '.cmd-pad-empty')
+  assert.strictEqual(empty.textContent, '当前项目还没有使用记录')
+  // 切回全部 → top-mem 显示
+  const opts = collect(s.contentEl, '.cmd-pad-scope-opt', [])
+  opts[1].listeners.click.forEach((fn) => fn({ target: opts[1] }))
+  await tick()
+  assert.deepStrictEqual(cardIds(s), ['top-mem'])
+})
+
 // ════════════════════════════════════════════════════════════════════════
 // C. 视觉规范 §6 静态检查
 // ════════════════════════════════════════════════════════════════════════
@@ -676,11 +812,11 @@ await check('C3 类名全带 cmd-pad- 前缀（CSS 选择器 + className 赋值�
   assert.ok(!CLIENT_SRC.includes('nArs4W'), '不引用 better-sidebar 哈希类名')
 })
 
-await check('C4 仅 2 处单色 SVG（浮动图标 + 搜索放大镜）；innerHTML 仅用于静态 SVG', async () => {
+await check('C4 仅 3 处单色 SVG（浮动图标 + 搜索放大镜 + 上次使用范围帮助 ⓘ）；innerHTML 仅用于静态 SVG', async () => {
   const svgCount = (CLIENT_SRC.match(/<svg/g) || []).length
-  assert.strictEqual(svgCount, 2, 'SVG 数量应为 2，实际 ' + svgCount)
+  assert.strictEqual(svgCount, 3, 'SVG 数量应为 3，实际 ' + svgCount)
   const innerHtmlAssigns = (CLIENT_SRC.match(/\.innerHTML\s*=/g) || []).length
-  assert.strictEqual(innerHtmlAssigns, 2, 'innerHTML 仅用于 FAB_SVG / SEARCH_SVG 两处静态 SVG')
+  assert.strictEqual(innerHtmlAssigns, 3, 'innerHTML 仅用于 FAB_SVG / SEARCH_SVG / HELP_SVG 三处静态 SVG')
 })
 
 await check('C5 z-index 层级：抽屉 30、Toast 90（视觉规范 §4.3）', async () => {

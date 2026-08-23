@@ -89,7 +89,7 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 
 - **布局（用户定稿，2026-08-23）**：抽屉内部呈上下结构——标题栏 → 搜索栏（整宽）→ **分组横条**（分组项横向 chip 排列，放不下换行，最多 3 行）→ 命令区（占满剩余宽度）；
 - **打开即定位（用户定稿，调整记录 #17）**：抽屉打开时直接显示**上次使用的分组**（lastUsedViewId，复制命令时刷新），无「上次使用」标签；上次视图失效时回退「全部」；
-- **分组横条**（设计文档 §3.3 结构，横条化呈现）：全部 → 项目：当前 cwd → 未分组（仅当存在）→ 常驻分组 → 更多箭头（**仅图标**：折叠 `▸` 展开 / 展开 `◂` 收起，悬停 title 显示隐藏分组数；其他项目按最近使用倒序 + 不常驻分组，展开区内无「分组」小节标题——调整记录 #26）；
+- **分组横条**（设计文档 §3.3 结构，横条化呈现）：全部 → 项目：当前 cwd → **上次使用**（动态最近使用视图，调整记录 #28）→ 未分组（仅当存在）→ 常驻分组 → 更多箭头（**仅图标**：折叠 `▸` 展开 / 展开 `◂` 收起，悬停 title 显示隐藏分组数；其他项目按最近使用倒序 + 不常驻分组，展开区内无「分组」小节标题——调整记录 #26）；
 - **项目识别**：client 探测 `ctx.get('sessions')` 取当前会话 id → GET
   `/cmd-pad/api/library?sessionId=` → host 半 `resolveSessionCwd` 回填权威 cwd；
   多项目末段重名时带上一级路径消歧（`Temp_Code` → `docs / Temp_Code`）；
@@ -99,7 +99,12 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
   Esc 清空（Esc 链：搜索 → 抽屉）；
 - **复制**：`navigator.clipboard` 优先，失败回退 `execCommand`；成功 Toast「已复制」；
   复制成功后按功能文档 §3.4 刷新「上次使用」（PUT `/api/state`，机器状态，非命令库写）；
-- **回归**：`node test/t03-browse-copy.test.mjs`（30 项：纯逻辑分组模型/消歧/搜索 +
+- **「上次使用」视图（调整记录 #28，替换原「常用」分组概念）**：动态最近使用命令视图——
+  复制/运行成功即记录（去重置顶），**保留 100 条、显示 20 条**（已删除命令自动跳过）；
+  视图顶部工具栏：**范围切换（项目 | 全部）**（`项目`＝仅当前项目命令，`全部`＝跨项目，
+  `recentScope` 持久化）＋ **ⓘ 帮助按钮**（小圆 + 空心问号，悬停提示「切换范围：
+  项目＝仅当前项目，全部＝所有项目」）；
+- **回归**：`node test/t03-browse-copy.test.mjs`（38 项：纯逻辑分组模型/消歧/搜索/上次使用 +
   DOM 渲染 + 视觉规范 §6 静态检查）。
 
 ## 写操作（T04，client 半）
@@ -109,8 +114,8 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **添加/编辑**（表单弹窗）：标题/命令（多行等宽）/备注/危险勾选/分组多选；分组列表
   自定义（常驻在前）→ 项目分区，>8 个未勾选不常驻折叠「显示全部分组 ▸」；底部可输入
   新建分组名（保存时自动创建）；默认勾选规则（§3.5）：当前分组视图 → 该分组；全部/搜索态
-  → 上次使用的分组 → 当前项目 → 常用；命令输入检测危险关键词（rm/del/format/wipe/reboot
-  等，词边界匹配）自动勾选「危险」并提示（可取消）；
+  → 上次使用的分组 → 当前项目（原「→ 常用」兜底已移除，调整记录 #28）；命令输入检测
+  危险关键词（rm/del/format/wipe/reboot 等，词边界匹配）自动勾选「危险」并提示（可取消）；
 - **删除**（§3.5 语境语义）：分组视图下命令还属于其他分组 = 静默解关联；否则确认弹窗
   彻底删除；分组删除弹窗列出「N 条解除关联，M 条仅此分组的将彻底删除」；删除后 5 秒内
   Toast 可撤销（快照恢复）；
@@ -120,15 +125,18 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **回归**：`node test/t04-write-ops.test.mjs`（25 项：纯逻辑 7 + DOM 交互 18，
   含 22 次连续增删改后 yml 始终合法）。
 
-## 运行功能（T07，2026-08-23 落地）
+## 运行功能（T07，2026-08-23 落地；调整记录 #28 增补）
 
 **主形态（better-sidebar 在场）**：卡片/右键菜单提供「运行」= **每次新开专用终端 Tab** +
 **终端直写**（用户决策，TASK.md 调整记录 #24）：
 
-- **流程**：`bs.openTab({type:'terminal'})` 新开 → snapshot 差集识别新终端 id →
-  `activateTab` 激活 → 短命 WS 附加 `/sidebar/ws/terminal?sessionId&tab&cwd` →
+- **流程**：**底部栏强制落点**（调整记录 #28：新终端一律落在底部栏——底部面板打开且有
+  既有 tab 时先 `activateTab` 底部树任一 tab 切 activePane，再 `openTab`；底部面板关闭/
+  无底部 tab 时降级当前行为）→ `bs.openTab({type:'terminal'})` 新开 → snapshot 差集识别
+  新终端 id → `activateTab` 激活 → 短命 WS 附加 `/sidebar/ws/terminal?sessionId&tab&cwd` →
   **等输出流出现提示符 `>`（PowerShell 冷启动 6–7s，未就绪写入会被吞）** → 发送 `命令+\r` →
-  **保持连接不 drop**（新终端无 UI 视图长连时 bare drop 会在 reconnect grace 30s 后杀 pty）；
+  **保持连接不 drop**（新终端无 UI 视图长连时 bare drop 会在 reconnect grace 30s 后杀 pty）→
+  运行成功 → onSuccess 记录「上次使用」视图（调整记录 #28）；
 - **危险命令**（`danger: true`）：确认弹窗（命令原文 + 取消/确认）→ 只发文本**不带 `\r`**，
   停在提示符由用户亲眼确认后回车（双人工确认）；
 - **降级链**（用户确认定稿）：终端直写任一失败（pty 配额满/设置禁用/openTab 被拒/WS 失败）→
@@ -137,7 +145,7 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **降级形态（无 better-sidebar）**：**不渲染运行入口**，只提供复制（用户决策 #24）。
 - **协议实证**：双 WS 附加 13/13（`node test/t07-ws-probe.mjs`，better-sidebar **v0.13.1**）
   + 端到端写文件副作用验证；每次升级 better-sidebar 后回归（`docs/better-sidebar-接入规范.md` §3）。
-- **回归**：`node test/t07-run.test.mjs`（17 项：纯逻辑/成功路径/危险确认/降级链×4/回滚/UI）。
+- **回归**：`node test/t07-run.test.mjs`（21 项：纯逻辑/成功路径/底部栏落点/onSuccess/危险确认/降级链×4/回滚/UI）。
 
 ## 主形态（T06，better-sidebar Tab）
 
@@ -156,19 +164,19 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **回归**：`node test/t06-main-form.test.mjs`（14 项：探测链/descriptor 字段/能力门×3/
   无浮层/react 不可用回退/HMR/组件挂载/scope 重挂/visible 门/onActivate/插件设置/Esc 链）。
 
-## 回归汇总（T08 收尾，2026-08-23）
+## 回归汇总（T08 收尾 138 项；调整记录 #28 后 150 项）
 
-全套验收 harness **138 项全过**（`node test/<t0X>-*.test.mjs`，工作目录 `dsh-cmd-pad/`）：
+全套验收 harness **150 项全过**（`node test/<t0X>-*.test.mjs`，工作目录 `dsh-cmd-pad/`）：
 
 | harness | 项数 | 覆盖 |
 |---|---|---|
 | `t02-data-layer` | 33 | 迷你 YAML / 原子写+串行队列 / API 全链路 / 信任围栏 / yaml 动态加载 |
 | `t02-cluster-offset` | 7 | 顶栏 ✕ 与 better-sidebar 按钮簇避让（双锚点探测） |
 | `t03-drawer-layout` | 12 | 抽屉占用式推挤 + 拖拽分栏 + 持久化 |
-| `t03-browse-copy` | 30 | 分组模型/消歧/搜索 + DOM 渲染 + 视觉规范 §6 静态检查 |
+| `t03-browse-copy` | 38 | 分组模型/消歧/搜索/**上次使用视图（记录/范围切换/ⓘ）** + DOM 渲染 + 视觉规范 §6 静态检查 |
 | `t04-write-ops` | 25 | 增删改/删除语境语义/撤销/重命名级联/常驻持久化 |
 | `t06-main-form` | 14 | 主形态探测链/descriptor/能力门/无浮层/React 桥接/插件设置 |
-| `t07-run` | 17 | 终端直写成功路径/危险不带 \r/降级链×4/回滚/UI |
+| `t07-run` | 21 | 终端直写成功路径/**底部栏落点/onSuccess**/危险不带 \r/降级链×4/回滚/UI |
 
 另有 `t07-ws-probe`（13 项）为**实机协议探针**（需真实 better-sidebar v0.13.1 + 运行中的 dsh web），
 每次升级 better-sidebar 后回归。真机实证（WebBridge，2026-08-23）：主形态入口/无浮层/面板内容/

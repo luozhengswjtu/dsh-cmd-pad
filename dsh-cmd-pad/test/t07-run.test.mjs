@@ -498,6 +498,22 @@ await check('R4 terminalSendText：普通命令带 \\r 执行 / 危险命令不�
   assert.strictEqual(t.terminalSendText({ cmd: 'echo x', danger: undefined }), 'echo x\r')
 })
 
+await check('R5 firstBottomTab：底部树任意 tab（排除 agent:）/ 空容错（调整记录 #28 强制底部栏）', async () => {
+  const t = (await bootScene({})).moduleExports.testable
+  assert.strictEqual(t.firstBottomTab(null), null, 'null snapshot 容错')
+  assert.strictEqual(t.firstBottomTab({}), null, '空 snapshot 容错')
+  assert.strictEqual(t.firstBottomTab({ state: {} }), null, '无 bottomSplits 容错')
+  assert.strictEqual(t.firstBottomTab({ state: { bottomSplits: [] } }), null, '空底部树容错')
+  assert.strictEqual(t.firstBottomTab({ state: { bottomSplits: [{ id: 'p', tabs: [] }] } }), null, '叶子无 tab 容错')
+  const tab = { id: 'terminal:x', type: 'terminal' }
+  assert.strictEqual(
+    t.firstBottomTab({ state: { bottomSplits: [{ id: 'p', tabs: [{ id: 'agent:z', type: 'terminal' }, tab] }] } }).id,
+    'terminal:x', '跳过 agent: 前缀')
+  assert.strictEqual(
+    t.firstBottomTab({ state: { bottomSplits: [{ id: 'p', tabs: [{ id: 'editor:y', type: 'editor' }] }] } }).id,
+    'editor:y', '任意类型既有 tab 均可作为底部落点锚')
+})
+
 // ════════════════════════════════════════════════════════════════════════
 // S. runner 流程（成功路径）
 // ════════════════════════════════════════════════════════════════════════
@@ -570,6 +586,75 @@ await check('S3 shell 未就绪（新 pty 冷启动）→ 等待提示符出现�
   assert.ok(!ws.closed, '发送后保持连接（不 bare drop，保 pty 活）')
   assert.deepStrictEqual(toasts, ['已发送到终端'], '成功 Toast')
   WsStub.noPrompt = false
+})
+
+// ════════════════════════════════════════════════════════════════════════
+// S+. 调整记录 #28：运行终端强制落底部栏 + 成功回调（「上次使用」记录）
+// ════════════════════════════════════════════════════════════════════════
+
+await check('S5 底部面板打开且有既有 tab → 先激活底部 tab 再 openTab（运行终端落底部栏）', async () => {
+  const s = await bootScene({ seedTabs: [{ id: 'terminal:existing', type: 'terminal', title: '旧终端' }] })
+  WsStub.instances.length = 0
+  WsStub.failNext = false
+  // 模拟底部面板打开（getSnapshot 的 state 与 snapshotState 同引用）
+  s.bsStub.getSnapshot().state.bottomOpen = true
+  const t = s.moduleExports.testable
+  const runner = t.createTerminalRunner(s.bsStub, () => ({ sessionId: 's1', cwd: SAMPLE_CWD }), () => {}, () => {}, () => {})
+  runner.run({ id: 'top-mem', cmd: 'echo x', danger: false })
+  await tick()
+  // 先激活底部既有 tab（把 activePane 切到底部树）→ 再 openTab → 再激活新终端
+  assert.strictEqual(s.activateCalls.length, 2, '激活底部旧 tab + 激活新终端')
+  assert.strictEqual(s.activateCalls[0].id, 'terminal:existing', 'openTab 前先激活底部既有 tab')
+  assert.strictEqual(s.openTabCalls.length, 1, 'openTab 一次')
+  assert.strictEqual(s.openTabCalls[0].seed.type, 'terminal')
+  const ws = lastWs()
+  assert.ok(ws !== null, 'WS 已创建（发送链路正常）')
+  assert.deepStrictEqual(ws.sent, ['echo x\r'], '命令已发送')
+})
+
+await check('S6 底部面板关闭 / 无底部 tab → 不强制（降级当前行为，避免终端落在隐藏面板）', async () => {
+  // bottomOpen 缺失（undefined）→ 不激活底部 tab
+  const s = await bootScene({ seedTabs: [{ id: 'terminal:existing', type: 'terminal' }] })
+  WsStub.instances.length = 0
+  WsStub.failNext = false
+  const t = s.moduleExports.testable
+  const runner = t.createTerminalRunner(s.bsStub, () => ({ sessionId: 's1', cwd: SAMPLE_CWD }), () => {}, () => {}, () => {})
+  runner.run({ id: 'top-mem', cmd: 'echo x', danger: false })
+  await tick()
+  assert.strictEqual(s.activateCalls.length, 1, 'bottomOpen 缺失 → 不强制，仅激活新终端')
+  assert.strictEqual(s.activateCalls[0].id, 'terminal:uuid-1')
+  // 底部面板打开但底部树无 tab → 不强制
+  const s2 = await bootScene({})
+  WsStub.instances.length = 0
+  WsStub.failNext = false
+  s2.bsStub.getSnapshot().state.bottomOpen = true
+  const runner2 = t.createTerminalRunner(s2.bsStub, () => ({ sessionId: 's1', cwd: SAMPLE_CWD }), () => {}, () => {}, () => {})
+  runner2.run({ id: 'top-mem', cmd: 'echo x', danger: false })
+  await tick()
+  assert.strictEqual(s2.activateCalls.length, 1, '底部树无 tab → 不强制，仅激活新终端')
+  assert.strictEqual(s2.activateCalls[0].id, 'terminal:uuid-1')
+})
+
+await check('S7 runner 成功回调 onSuccess：运行成功即触发（「上次使用」记录接线）', async () => {
+  const s = await bootScene({})
+  WsStub.instances.length = 0
+  WsStub.failNext = false
+  const t = s.moduleExports.testable
+  const successes = []
+  const runner = t.createTerminalRunner(s.bsStub, () => ({ sessionId: 's1', cwd: SAMPLE_CWD }), () => {}, () => {}, (cmd) => successes.push(cmd))
+  runner.run({ id: 'top-mem', cmd: 'echo x', danger: false })
+  await tick()
+  assert.strictEqual(successes.length, 1, '成功路径触发 onSuccess')
+  assert.strictEqual(successes[0].id, 'top-mem')
+  // 失败路径不触发 onSuccess（降级复制不当作「使用」）
+  WsStub.instances.length = 0
+  WsStub.failNext = true
+  const copied = []
+  const runner2 = t.createTerminalRunner(s.bsStub, () => ({ sessionId: 's1', cwd: SAMPLE_CWD }), () => {}, (text, cb) => { copied.push(text); cb(true) }, (cmd) => successes.push(cmd))
+  runner2.run({ id: 'top-mem', cmd: 'echo x', danger: false })
+  await tick()
+  assert.strictEqual(successes.length, 1, 'WS 失败降级不触发 onSuccess')
+  assert.deepStrictEqual(copied, ['echo x'], '仍走复制降级')
 })
 
 // ════════════════════════════════════════════════════════════════════════

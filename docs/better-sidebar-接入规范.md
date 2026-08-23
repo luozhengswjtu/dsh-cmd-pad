@@ -179,9 +179,16 @@ ctx.effect(() => bs.registerTab({
 
 ```
 scope = { sessionId, cwd }                        // 主形态 Tab props.scope（权威来源）
+// 调整记录 #28（2026-08-2x）：运行终端**一律落在底部栏**（用户决策，无论 cmd-pad 停靠在哪）。
+// better-sidebar 公开 API 无「指定面板落点」——openTab 落在 activePane（openTabInActivePane）。
+// 做法：底部面板打开（state.bottomOpen===true）且底部树有既有 tab 时，先激活底部树任一
+// tab（activateTab 会把 activePane 切到该 pane），再 openTab 即落在底部树。
+// 底部面板关闭 / 底部树无 tab 时降级为当前行为（落在 activePane，尽力而为）。
+if (snapshot.state.bottomOpen === true && (bt = firstBottomTab(snapshot)) !== null)
+  bs.activateTab(bt.id, scope)                   // 切 activePane 到底部树
 before = 遍历 snapshot state.splits + state.bottomSplits 叶子的 tabs
          （过滤 type==='terminal' && !agent: 前缀）
-bs.openTab({ type: 'terminal' }, scope)           // 新开专用终端
+bs.openTab({ type: 'terminal' }, scope)           // 新开专用终端（落在底部树）
 after  = 同上（重新 getSnapshot）
 target = after 中 id 不在 before 里的终端（差集识别）
 target 为空 → 配额满/禁用/被拒 → 降级链（复制 + Toast「已复制，到终端粘贴执行」）
@@ -189,6 +196,7 @@ try { bs.activateTab(target.id, scope) }          // 激活新终端（确保用
 ws = new WebSocket(`/sidebar/ws/terminal?sessionId&tab&cwd`)
 ws.onopen → 等输出流出现提示符 `>`（shell 就绪）→ send(cmd + '\r')
           → 发送后**保持连接不 drop**（保 pty 活，见 §3.2 陷阱）
+          → 成功回调 onSuccess(cmd)（「上次使用」视图记录，调整记录 #28）
 ws 任一失败（throw / error / close / 超时 30s）→ bs.closeTab(target.id) 回滚 → 降级链
 危险命令：send(cmd) 不带 '\r'（停在提示符，双人工确认，§3.4）
 ```

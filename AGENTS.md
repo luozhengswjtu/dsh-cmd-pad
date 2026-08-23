@@ -26,15 +26,18 @@
 4. **主形态不自建浮层**（无浮动图标/抽屉/蒙层）；降级形态抽屉非模态、无蒙层。
 5. **终端直写**走 `/sidebar/ws/terminal?sessionId&tab&cwd`：输入帧原始文本；**只发文本，永不发
    `{type:'close'}` 帧**；复用终端时排除 `agent:` 前缀 tab；任何环节失败按降级链走
-   （终端 → 对话输入框 → 复制 + Toast）。此协议是 better-sidebar 内部实现，其升级后必须回归验证。
-   > ⚠️ **运行功能暂缓**（TASK.md 调整记录 #21，2026-08-23）：用户决策移除「运行」，本条为未来
-   > T07 恢复时的协议约束；当前代码无运行入口（卡片仅「复制」）。降级链第二级「对话输入框」为
-   > 已否决方案，恢复时需用户重新确认取舍。
+   （终端 → 复制 + Toast）。此协议是 better-sidebar 内部实现，其升级后必须回归验证。
+   > 运行功能已按用户决策落地（T07，2026-08-23，调整记录 #24）：**每次新开专用终端 Tab** +
+   > WS 直写（等提示符再发送、保持连接不 drop、失败回滚+复制）；**新终端一律落底部栏**
+   > （调整记录 #28：先激活底部树任一既有 tab 切 activePane 再 openTab，`firstBottomTab`）；
+   > 降级形态（无 better-sidebar）无运行入口只复制。升级 better-sidebar 后跑
+   > `test/t07-ws-probe.mjs` + `test/t07-run.test.mjs` 回归（接入规范 §3）。
 6. **零构建纯 DOM**：client 半为手写 `__ModuleLoader__.load({ id: 'dsh-cmd-pad', factory })` wire format；
    react 可 `require('react')`（白名单）；**禁止** value-import/require `dsh-better-sidebar` 的任何模块。
-7. **视觉**：零硬编码颜色，全量 `--dsw-alias-*` 令牌 + 兜底链；无 emoji、无彩色图标（全插件仅 Tab 图标
-   与搜索放大镜 2 处单色 SVG：16 viewBox / 1.5px stroke / currentColor / round caps）；按钮纯文字；
-   类名加 `cmd-pad-` 前缀；不引用 better-sidebar 的 CSS Modules 哈希类名；z-index：抽屉 30、弹层 90。
+7. **视觉**：零硬编码颜色，全量 `--dsw-alias-*` 令牌 + 兜底链；无 emoji、无彩色图标（全插件仅 3 处
+   单色 SVG：Tab 图标、搜索放大镜、上次使用范围帮助 ⓘ——16 viewBox / 1.5px stroke / currentColor /
+   round caps，调整记录 #28）；按钮纯文字（范围切换「项目/全部」为纯文字二选一）；类名加
+   `cmd-pad-` 前缀；不引用 better-sidebar 的 CSS Modules 哈希类名；z-index：抽屉 30、弹层 90。
 8. **数据**：命令库 = 人可手改的 `commands.yml`（分组名即主键）；机器状态 = `state.json`；写入原子化
    （临时文件 + rename，yml 写前 `.bak`）；存储目录 `%USERPROFILE%\.dsh\profiles\web\cmd-pad\`。
 9. **禁止修改 DSH 官方源码**与 `DSH-better-sidebar-main/` 快照；挂载只走 profile 机制
