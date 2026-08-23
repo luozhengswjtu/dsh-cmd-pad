@@ -423,6 +423,8 @@ window.__ModuleLoader__.load({
       '  -webkit-line-clamp:2;',
       '  -webkit-box-orient:vertical;',
       '  overflow:hidden;',
+      // 中性黑浅投影，比卡片本体（.15）更淡（调整记录 #32：命令内容框内的命令行代码块同样加一层，淡一点）
+      '  box-shadow:0 1px 3px rgba(0,0,0,.08);',
       '}',
       '.cmd-pad-card-cmd:hover{',
       '  border-color:var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
