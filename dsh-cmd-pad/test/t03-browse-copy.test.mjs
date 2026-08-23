@@ -636,10 +636,10 @@ await check('C1 无裸硬编码色值：所有 #hex 均在 --cp-* 兜底链内',
     if (!ctx.includes('--cp-')) bad.push(m[0] + ' @ ' + css.slice(Math.max(0, m.index - 40), m.index))
   }
   assert.deepStrictEqual(bad, [], '裸 hex 色值：' + JSON.stringify(bad))
-  // rgba 仅允许中性投影（浮起感，不承载主题色语义）
+  // rgba 仅允许中性投影/遮罩（浮起感与压暗，不承载主题色语义）
   const rgba = css.match(/rgba?\([^)]*\)/g) || []
   assert.ok(rgba.length >= 1, '有投影 rgba')
-  assert.ok(rgba.every((r) => /rgba\(0,\s*0,\s*0,\s*\.25\)/.test(r)), '投影必须为中性黑 rgba(0,0,0,.25)，实际：' + JSON.stringify(rgba))
+  assert.ok(rgba.every((r) => /rgba\(0,\s*0,\s*0,\s*\.\d+\)/.test(r)), 'rgba 必须为中性黑 rgba(0,0,0,.x)，实际：' + JSON.stringify(rgba))
 })
 
 await check('C2 无 emoji（杂项符号/象形文字区）', async () => {

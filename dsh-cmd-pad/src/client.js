@@ -436,6 +436,225 @@ window.__ModuleLoader__.load({
       '.cmd-pad-toast[data-kind="error"]{',
       '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
       '}',
+      // ── T04：顶栏「+ 添加」按钮（纯文字）──
+      '.cmd-pad-add{',
+      '  border:none;',
+      '  background:transparent;',
+      '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
+      '  font-size:12px;',
+      '  line-height:1;',
+      '  padding:6px 8px;',
+      '  margin-right:2px;',
+      '  border-radius:6px;',
+      '  cursor:pointer;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-add:hover{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '}',
+      // ── T04：弹窗（遮罩 + 模态；弹层配方视觉规范 §2）──
+      '.cmd-pad-overlay{',
+      '  position:fixed;',
+      '  inset:0;',
+      '  z-index:80;',
+      '  background:var(--dsw-alias-bg-mask-1,var(--cp-bg-mask-1,rgba(0,0,0,.4)));',
+      '  display:flex;',
+      '  align-items:center;',
+      '  justify-content:center;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-modal{',
+      '  width:min(430px,88vw);',
+      '  max-height:84vh;',
+      '  overflow-y:auto;',
+      '  box-sizing:border-box;',
+      '  background:var(--dsw-alias-bg-layer-2,var(--cp-bg-layer-2,#2a2c33));',
+      '  border:1px solid var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
+      '  border-radius:10px;',
+      // 中性黑色投影：仅承担浮起感
+      '  box-shadow:0 4px 16px rgba(0,0,0,.25);',
+      '  padding:14px;',
+      '  z-index:90;',
+      '}',
+      '.cmd-pad-modal-title{',
+      '  font-size:13px;',
+      '  font-weight:600;',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '  margin-bottom:10px;',
+      '}',
+      '.cmd-pad-modal-message{',
+      '  font-size:12px;',
+      '  line-height:1.7;',
+      '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
+      '  margin-bottom:10px;',
+      '  white-space:pre-wrap;',
+      '  word-break:break-all;',
+      '}',
+      '.cmd-pad-form-row{',
+      '  margin-bottom:8px;',
+      '}',
+      '.cmd-pad-form-label{',
+      '  display:block;',
+      '  font-size:11px;',
+      '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
+      '  margin-bottom:4px;',
+      '}',
+      '.cmd-pad-form-input{',
+      '  width:100%;',
+      '  box-sizing:border-box;',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  background:var(--dsw-alias-bg-base,var(--cp-bg-base,#1c1d21));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '  font-size:12px;',
+      '  padding:6px 8px;',
+      '  border-radius:6px;',
+      '  outline:none;',
+      '}',
+      '.cmd-pad-form-input:focus{',
+      '  border-color:var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
+      '}',
+      '.cmd-pad-form-textarea{',
+      '  min-height:64px;',
+      '  resize:vertical;',
+      '  font-family:var(--ds-font-family-code, monospace);',
+      '  line-height:1.5;',
+      '}',
+      '.cmd-pad-form-hint{',
+      '  font-size:11px;',
+      '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
+      '  margin-top:3px;',
+      '  line-height:1.5;',
+      '}',
+      '.cmd-pad-checkbox-row{',
+      '  display:flex;',
+      '  align-items:center;',
+      '  gap:6px;',
+      '  font-size:12px;',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '  padding:3px 0;',
+      '  cursor:pointer;',
+      '  user-select:none;',
+      '}',
+      '.cmd-pad-group-check-section{',
+      '  font-size:11px;',
+      '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
+      '  margin:6px 0 2px;',
+      '}',
+      '.cmd-pad-group-check{',
+      '  display:flex;',
+      '  align-items:center;',
+      '  gap:6px;',
+      '  padding:3px 6px;',
+      '  border-radius:4px;',
+      '  cursor:pointer;',
+      '  font-size:12px;',
+      '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
+      '  user-select:none;',
+      '}',
+      '.cmd-pad-group-check:hover{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '}',
+      '.cmd-pad-group-check[data-checked="true"]{',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '  font-weight:500;',
+      '}',
+      '.cmd-pad-more-groups{',
+      '  margin-top:4px;',
+      '  font-size:11px;',
+      '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
+      '  border:none;',
+      '  background:transparent;',
+      '  cursor:pointer;',
+      '  padding:2px 6px;',
+      '  border-radius:4px;',
+      '}',
+      '.cmd-pad-more-groups:hover{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '}',
+      '.cmd-pad-form-actions{',
+      '  display:flex;',
+      '  justify-content:flex-end;',
+      '  gap:8px;',
+      '  margin-top:12px;',
+      '}',
+      // 主按钮（保存）：视觉规范 §2 配方
+      '.cmd-pad-btn-primary{',
+      '  border:1px solid transparent;',
+      '  background:var(--dsw-alias-button-primary-fill,var(--cp-button-primary-fill,#4a6cf7));',
+      '  color:var(--dsw-alias-label-primary-inverted,var(--cp-label-primary-inverted,#ffffff));',
+      '  font-size:12px;',
+      '  line-height:1.4;',
+      '  padding:5px 14px;',
+      '  border-radius:6px;',
+      '  cursor:pointer;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-btn-primary:hover{',
+      '  background:var(--dsw-alias-button-primary-hover,var(--cp-button-primary-hover,#5a7af8));',
+      '}',
+      '.cmd-pad-btn-danger{',
+      '  border:1px solid var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
+      '  background:transparent;',
+      '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
+      '}',
+      '.cmd-pad-btn-danger:hover{',
+      '  background:color-mix(in srgb, var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171)) 10%, transparent);',
+      '}',
+      // ── T04：右键菜单（弹层配方）──
+      '.cmd-pad-menu{',
+      '  position:fixed;',
+      '  z-index:90;',
+      '  min-width:140px;',
+      '  background:var(--dsw-alias-bg-layer-2,var(--cp-bg-layer-2,#2a2c33));',
+      '  border:1px solid var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
+      '  border-radius:8px;',
+      // 中性黑色投影
+      '  box-shadow:0 2px 12px rgba(0,0,0,.25);',
+      '  padding:4px;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-menu-item{',
+      '  display:block;',
+      '  width:100%;',
+      '  text-align:left;',
+      '  padding:6px 10px;',
+      '  font-size:12px;',
+      '  line-height:1.4;',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '  background:transparent;',
+      '  border:none;',
+      '  border-radius:4px;',
+      '  cursor:pointer;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-menu-item:hover{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '}',
+      '.cmd-pad-menu-item[data-danger="true"]{',
+      '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
+      '}',
+      '.cmd-pad-menu-sep{',
+      '  height:1px;',
+      '  background:var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  margin:4px 6px;',
+      '}',
+      // ── T04：Toast 操作按钮（撤销）──
+      '.cmd-pad-toast-action{',
+      '  background:transparent;',
+      '  border:none;',
+      '  color:var(--dsw-alias-brand-primary,var(--cp-brand-primary,#5a7af8));',
+      '  font-size:12px;',
+      '  font-weight:600;',
+      '  cursor:pointer;',
+      '  padding:0 0 0 10px;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-toast-action:hover{',
+      '  text-decoration:underline;',
+      '}',
       // 拖拽分栏把手（左缘，col-resize；拖动中禁用过渡，避免 margin/宽度跟不上指针）
       '.cmd-pad-drawer-resize{',
       '  position:absolute;',
@@ -605,7 +824,9 @@ window.__ModuleLoader__.load({
       var agg = aggregateGroups(commands)
       var stats = groupStats(commands)
       var displayNames = disambiguateProjectNames(agg.projects)
-      var pinnedCustom = pinned.filter(function (g) { return agg.custom.indexOf(g) !== -1 })
+      // 常驻分组：pinnedGroups 中所有非项目分组（§3.3「常驻分组无命令时也显示」——
+      // 不在聚合里的常驻分组同样展示，count=0，内容区空态引导）
+      var pinnedCustom = pinned.filter(function (g) { return !isProjectGroup(g) })
       var unpinnedCustom = agg.custom.filter(function (g) { return pinned.indexOf(g) === -1 }).sort()
       var otherProjects = agg.projects.filter(function (p) { return p !== cwd }).sort(function (a, b) {
         var ta = typeof viewLastUsedAt['group:' + a] === 'number' ? viewLastUsedAt['group:' + a] : 0
@@ -627,12 +848,15 @@ window.__ModuleLoader__.load({
       return model
     }
 
-    /** 视图有效性（分组消失 / 项目消失 → 视图失效）。 */
+    /** 视图有效性（分组消失 / 项目消失 → 视图失效；无命令常驻分组仍有效，§3.3）。 */
     function isValidView(viewId, model) {
       if (viewId === 'all') return true
       if (viewId === 'current-project') return !!model.cwd
       if (viewId === 'ungrouped') return model.hasUngrouped
-      if (viewId.slice(0, 6) === 'group:') return !!model.groupSet[viewId.slice(6)]
+      if (viewId.slice(0, 6) === 'group:') {
+        var name = viewId.slice(6)
+        return !!model.groupSet[name] || model.pinnedCustom.indexOf(name) !== -1
+      }
       return false
     }
 
@@ -699,6 +923,134 @@ window.__ModuleLoader__.load({
       } catch (error) {
         return ''
       }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // T04 写操作纯逻辑（添加默认勾选 / 危险提示 / 删除计划 / 重命名 / 常驻）
+    // ════════════════════════════════════════════════════════════════════
+
+    /** 命令 id 生成：标题 slug + 随机短后缀（仅保证唯一，非展示用途）。 */
+    function generateCommandId(title) {
+      var base = String(title || 'cmd')
+        .toLowerCase()
+        .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 24) || 'cmd'
+      return base + '-' + Math.random().toString(36).slice(2, 6)
+    }
+
+    /** 危险关键词（设计文档 §4.3：rm/del/format/wipe/reboot 等，前端提示不强制）。 */
+    var DANGER_PATTERNS = [
+      { kw: 'rm', re: /(^|[^\w-])rm([\s;|&]|$)/ },
+      { kw: 'del', re: /(^|[^\w-])del([\s;|&]|$)/ },
+      { kw: 'format', re: /(^|[^\w-])format([\s;|&]|$)/ },
+      { kw: 'wipe', re: /(^|[^\w-])wipe([\s;|&]|$)/ },
+      { kw: 'reboot', re: /(^|[^\w-])reboot([\s;|&]|$)/ },
+      { kw: 'shutdown', re: /(^|[^\w-])shutdown([\s;|&]|$)/ },
+      { kw: 'drop table', re: /drop\s+table/ },
+      { kw: 'truncate', re: /(^|[^\w-])truncate([\s;|&]|$)/ },
+      { kw: 'rd /s', re: /(^|[^\w-])rd\s*\/s/ },
+      { kw: 'rmdir /s', re: /(^|[^\w-])rmdir\s*\/s/ },
+    ]
+
+    /** 检测命令文本中的危险关键词（词边界匹配，避免 format 内含 rm 之类误报）。 */
+    function dangerKeywordHits(cmdText) {
+      var text = String(cmdText || '').toLowerCase()
+      var hits = []
+      for (var i = 0; i < DANGER_PATTERNS.length; i++) {
+        if (DANGER_PATTERNS[i].re.test(text)) hits.push(DANGER_PATTERNS[i].kw)
+      }
+      return hits
+    }
+
+    /**
+     * 添加表单默认勾选分组（设计文档 §3.5）：
+     *  - group:<x> 视图 → [x]（含不常驻分组——「提升展示并默认勾选」）；
+     *  - current-project 视图 → [cwd]；
+     *  - ungrouped 视图 → []（保持未分组）；
+     *  - all / 搜索态 → 上次使用的分组 → 当前项目 → 常用（取第一个存在的）。
+     */
+    function defaultCheckedGroups(viewId, model, state, cwd) {
+      if (viewId.slice(0, 6) === 'group:') {
+        var g = viewId.slice(6)
+        return model.groupSet[g] ? [g] : []
+      }
+      if (viewId === 'current-project') return cwd ? [cwd] : []
+      if (viewId === 'ungrouped') return []
+      // all / 搜索态
+      var lastUsed = state.lastUsedViewId
+      if (typeof lastUsed === 'string' && lastUsed.slice(0, 6) === 'group:') {
+        var lu = lastUsed.slice(6)
+        if (model.groupSet[lu]) return [lu]
+      }
+      if (cwd && model.groupSet[cwd]) return [cwd]
+      if (model.groupSet['常用']) return ['常用']
+      return []
+    }
+
+    /**
+     * 命令删除计划（设计文档 §3.5 语境语义）：
+     *  - 在 group:<x> 视图且命令还属于其他分组 → unlink（仅解除 x 关联，静默）；
+     *  - 否则 → remove（彻底删除，需确认弹窗）。
+     */
+    function deletionPlan(cmd, viewId) {
+      if (viewId.slice(0, 6) === 'group:') {
+        var g = viewId.slice(6)
+        var groups = cmd.groups || []
+        if (groups.indexOf(g) !== -1 && groups.length > 1) {
+          return { mode: 'unlink', group: g }
+        }
+      }
+      return { mode: 'remove' }
+    }
+
+    /**
+     * 分组删除影响（设计文档 §3.5）：N 条命令解除关联，其中 M 条仅此分组的将彻底删除。
+     */
+    function groupDeletionPlan(groupName, library) {
+      var commands = (library && Array.isArray(library.commands)) ? library.commands : []
+      var affected = []
+      var deletedOnly = []
+      for (var i = 0; i < commands.length; i++) {
+        var groups = commands[i].groups || []
+        if (groups.indexOf(groupName) === -1) continue
+        affected.push(commands[i])
+        if (groups.length === 1) deletedOnly.push(commands[i])
+      }
+      return { affected: affected, deletedOnly: deletedOnly }
+    }
+
+    /**
+     * 分组重命名（仅自定义分组，级联更新）：newName 与现有分组名冲突（非自身）→
+     * 返回 { ok:false, reason }；否则返回级联后的新 library 与受影响命令数。
+     */
+    function renameGroup(library, oldName, newName, existingGroups) {
+      if (typeof newName !== 'string' || newName.trim() === '' || /[\r\n]/.test(newName)) {
+        return { ok: false, reason: '分组名不能为空或包含换行' }
+      }
+      newName = newName.trim()
+      if (newName === oldName) return { ok: false, reason: '新旧分组名相同' }
+      if (existingGroups && existingGroups[newName]) {
+        return { ok: false, reason: '分组名「' + newName + '」已存在' }
+      }
+      var commands = (library && Array.isArray(library.commands)) ? library.commands : []
+      var changed = 0
+      var next = commands.map(function (c) {
+        var groups = c.groups || []
+        if (groups.indexOf(oldName) === -1) return c
+        changed++
+        return Object.assign({}, c, { groups: groups.map(function (g) { return g === oldName ? newName : g }) })
+      })
+      return { ok: true, library: Object.assign({}, library, { commands: next }), changed: changed }
+    }
+
+    /** 常驻切换：返回更新后的 pinnedGroups（加入/移除，保持顺序）。 */
+    function togglePinned(pinnedGroups, groupName) {
+      var pinned = Array.isArray(pinnedGroups) ? pinnedGroups.slice() : []
+      var idx = pinned.indexOf(groupName)
+      if (idx === -1) pinned.push(groupName)
+      else pinned.splice(idx, 1)
+      return pinned
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -795,8 +1147,8 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * 抽屉外壳（T01）：head（标题 + ✕）+ 搜索栏 + 布局（分组侧栏 / 内容区）。
-     * 返回 { drawer, searchInput, groupsEl, contentEl }。
+     * 抽屉外壳（T01）：head（标题 + + 添加 + ✕）+ 搜索栏 + 布局（分组侧栏 / 内容区）。
+     * 返回 { drawer, addBtn, searchInput, searchCount, groupsEl, contentEl }。
      */
     function createDrawer(onClose) {
       var drawer = document.createElement('div')
@@ -810,6 +1162,16 @@ window.__ModuleLoader__.load({
       title.className = 'cmd-pad-drawer-title'
       title.textContent = '命令'
 
+      var addBtn = document.createElement('button')
+      addBtn.type = 'button'
+      addBtn.className = 'cmd-pad-add'
+      addBtn.textContent = '+ 添加'
+      addBtn.title = '添加命令'
+      addBtn.setAttribute('aria-label', '添加命令')
+
+      var spacer = document.createElement('span')
+      spacer.style.flex = '1'
+
       var close = document.createElement('button')
       close.type = 'button'
       close.className = 'cmd-pad-drawer-close'
@@ -819,6 +1181,8 @@ window.__ModuleLoader__.load({
       close.addEventListener('click', onClose)
 
       head.appendChild(title)
+      head.appendChild(spacer)
+      head.appendChild(addBtn)
       head.appendChild(close)
 
       // 搜索栏（T03）：放大镜 + input + 计数 + 清空
@@ -868,7 +1232,7 @@ window.__ModuleLoader__.load({
 
       drawer.appendChild(head)
       drawer.appendChild(body)
-      return { drawer: drawer, searchInput: searchInput, searchCount: searchCount, groupsEl: groupsEl, contentEl: contentEl }
+      return { drawer: drawer, addBtn: addBtn, searchInput: searchInput, searchCount: searchCount, groupsEl: groupsEl, contentEl: contentEl }
     }
 
     // ── 分组行 / 上次 slot / 更多（T03 渲染）──
@@ -973,6 +1337,254 @@ window.__ModuleLoader__.load({
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // T04 写操作 DOM：分组多选 / 表单弹窗 / 确认弹窗 / 重命名弹窗 / 右键菜单
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * 分组多选列表（设计文档 §3.5）：自定义分组（常驻在前）→ 项目分组分区；
+     * 分组 > 8 个时，未勾选且不常驻的收进「显示全部分组 ▸」折叠区。
+     * checkedSet 为可变对象（收集勾选状态）。
+     */
+    function groupCheckListEl(groupOptions, checkedSet, onChange) {
+      var wrap = el('div', 'cmd-pad-group-checks')
+      var custom = groupOptions.filter(function (o) { return !isProjectGroup(o.name) })
+      var projects = groupOptions.filter(function (o) { return isProjectGroup(o.name) })
+      var orderedCustom = custom.filter(function (o) { return o.pinned }).concat(custom.filter(function (o) { return !o.pinned }))
+      var all = orderedCustom.concat(projects)
+
+      var moreExpanded = false
+      function render() {
+        clearEl(wrap)
+        var visible = all
+        var folded = []
+        if (all.length > 8) {
+          visible = all.filter(function (o) { return checkedSet[o.name] || o.pinned || isProjectGroup(o.name) })
+          folded = all.filter(function (o) { return !checkedSet[o.name] && !o.pinned && !isProjectGroup(o.name) })
+        }
+        var shownCustom = 0
+        var shownProject = 0
+        for (var i = 0; i < visible.length; i++) {
+          var o = visible[i]
+          if (isProjectGroup(o.name)) {
+            if (shownProject === 0) wrap.appendChild(el('div', 'cmd-pad-group-check-section', '项目分组'))
+            shownProject++
+          } else if (shownCustom === 0 && !o.pinned) {
+            wrap.appendChild(el('div', 'cmd-pad-group-check-section', '自定义分组'))
+          } else if (shownCustom === 0) {
+            wrap.appendChild(el('div', 'cmd-pad-group-check-section', '自定义分组'))
+          }
+          if (!isProjectGroup(o.name)) shownCustom++
+          wrap.appendChild(checkRow(o))
+        }
+        if (folded.length > 0) {
+          if (moreExpanded) {
+            wrap.appendChild(el('div', 'cmd-pad-group-check-section', '显示全部分组'))
+            for (var j = 0; j < folded.length; j++) wrap.appendChild(checkRow(folded[j]))
+          } else {
+            var more = el('button', 'cmd-pad-more-groups', '显示全部分组 ▸（' + folded.length + '）')
+            more.type = 'button'
+            more.addEventListener('click', function () { moreExpanded = true; render() })
+            wrap.appendChild(more)
+          }
+        }
+      }
+      function checkRow(o) {
+        var row = el('div', 'cmd-pad-group-check')
+        if (checkedSet[o.name]) row.setAttribute('data-checked', 'true')
+        row.setAttribute('data-group', o.name)
+        var box = el('span', null, checkedSet[o.name] ? '\u2611' : '\u2610')
+        row.appendChild(box)
+        row.appendChild(el('span', null, o.display))
+        row.addEventListener('click', function () {
+          if (checkedSet[o.name]) {
+            delete checkedSet[o.name]
+            row.removeAttribute('data-checked')
+            box.textContent = '\u2610'
+          } else {
+            checkedSet[o.name] = true
+            row.setAttribute('data-checked', 'true')
+            box.textContent = '\u2611'
+          }
+          if (typeof onChange === 'function') onChange()
+        })
+        return row
+      }
+      render()
+      return wrap
+    }
+
+    /**
+     * 添加/编辑命令表单弹窗。opts: { mode, cmd?, groupOptions, checkedSet, onCancel, onSubmit(payload) }。
+     * payload = { title, cmd, note, danger, groups }。
+     */
+    function buildFormModal(opts) {
+      var isEdit = opts.mode === 'edit'
+      var modal = el('div', 'cmd-pad-modal')
+      modal.appendChild(el('div', 'cmd-pad-modal-title', isEdit ? '编辑命令' : '添加命令'))
+
+      var titleRow = el('div', 'cmd-pad-form-row')
+      titleRow.appendChild(el('label', 'cmd-pad-form-label', '标题'))
+      var titleInput = el('input', 'cmd-pad-form-input')
+      titleInput.type = 'text'
+      if (opts.cmd) titleInput.value = opts.cmd.title || ''
+      titleRow.appendChild(titleInput)
+
+      var cmdRow = el('div', 'cmd-pad-form-row')
+      cmdRow.appendChild(el('label', 'cmd-pad-form-label', '命令'))
+      var cmdInput = el('textarea', 'cmd-pad-form-input cmd-pad-form-textarea')
+      if (opts.cmd) cmdInput.value = opts.cmd.cmd || ''
+      cmdRow.appendChild(cmdInput)
+      var dangerHint = el('div', 'cmd-pad-form-hint')
+      cmdRow.appendChild(dangerHint)
+
+      var dangerRow = el('div', 'cmd-pad-form-row')
+      var dangerLabel = el('label', 'cmd-pad-checkbox-row')
+      var dangerCheck = document.createElement('input')
+      dangerCheck.type = 'checkbox'
+      if (opts.cmd && opts.cmd.danger === true) dangerCheck.checked = true
+      dangerLabel.appendChild(dangerCheck)
+      dangerLabel.appendChild(el('span', null, '危险命令（运行需二次确认）'))
+      dangerRow.appendChild(dangerLabel)
+
+      var noteRow = el('div', 'cmd-pad-form-row')
+      noteRow.appendChild(el('label', 'cmd-pad-form-label', '备注'))
+      var noteInput = el('input', 'cmd-pad-form-input')
+      if (opts.cmd) noteInput.value = opts.cmd.note || ''
+      noteRow.appendChild(noteInput)
+
+      var groupRow = el('div', 'cmd-pad-form-row')
+      groupRow.appendChild(el('label', 'cmd-pad-form-label', '分组'))
+      var checksWrap = groupCheckListEl(opts.groupOptions, opts.checkedSet)
+      groupRow.appendChild(checksWrap)
+      var newGroupInput = el('input', 'cmd-pad-form-input')
+      newGroupInput.placeholder = '新建分组名（保存时自动创建）'
+      newGroupInput.style.marginTop = '6px'
+      groupRow.appendChild(newGroupInput)
+
+      // 危险关键词提示（设计文档 §4.3：前端提示 + 自动勾选，用户可取消）
+      cmdInput.addEventListener('input', function () {
+        var hits = dangerKeywordHits(cmdInput.value)
+        if (hits.length > 0) {
+          dangerHint.textContent = '检测到危险关键词：' + hits.join('、') + ' —— 已勾选「危险命令」，可取消'
+          dangerCheck.checked = true
+        } else {
+          dangerHint.textContent = ''
+        }
+      })
+
+      var actions = el('div', 'cmd-pad-form-actions')
+      var cancelBtn = el('button', 'cmd-pad-btn', '取消')
+      cancelBtn.type = 'button'
+      var saveBtn = el('button', 'cmd-pad-btn-primary', '保存')
+      saveBtn.type = 'button'
+      cancelBtn.addEventListener('click', function () { if (typeof opts.onCancel === 'function') opts.onCancel() })
+      saveBtn.addEventListener('click', function () {
+        var title = titleInput.value.trim()
+        var cmdText = cmdInput.value
+        var notify = typeof opts.toast === 'function' ? opts.toast : function () {}
+        if (title === '') { notify('标题不能为空', 'error'); titleInput.focus(); return }
+        if (cmdText === '') { notify('命令不能为空', 'error'); cmdInput.focus(); return }
+        var groups = []
+        for (var name in opts.checkedSet) {
+          if (Object.prototype.hasOwnProperty.call(opts.checkedSet, name) && opts.checkedSet[name]) groups.push(name)
+        }
+        var newGroup = newGroupInput.value.trim()
+        var notify2 = typeof opts.toast === 'function' ? opts.toast : function () {}
+        if (newGroup !== '' && /[\r\n]/.test(newGroup)) { notify2('分组名不能包含换行', 'error'); return }
+        if (newGroup !== '' && groups.indexOf(newGroup) === -1) groups.push(newGroup)
+        opts.onSubmit({ title: title, cmd: cmdText, note: noteInput.value.trim(), danger: dangerCheck.checked, groups: groups })
+      })
+      actions.appendChild(cancelBtn)
+      actions.appendChild(saveBtn)
+      modal.appendChild(titleRow)
+      modal.appendChild(cmdRow)
+      modal.appendChild(dangerRow)
+      modal.appendChild(noteRow)
+      modal.appendChild(groupRow)
+      modal.appendChild(actions)
+      return modal
+    }
+
+    /** 确认弹窗。opts: { title, message, danger?, okLabel?, onCancel, onConfirm }。 */
+    function buildConfirmModal(opts) {
+      var modal = el('div', 'cmd-pad-modal')
+      modal.appendChild(el('div', 'cmd-pad-modal-title', opts.title))
+      modal.appendChild(el('div', 'cmd-pad-modal-message', opts.message))
+      var actions = el('div', 'cmd-pad-form-actions')
+      var cancelBtn = el('button', 'cmd-pad-btn', '取消')
+      cancelBtn.type = 'button'
+      var okBtn = el('button', 'cmd-pad-btn' + (opts.danger ? ' cmd-pad-btn-danger' : ' cmd-pad-btn-primary'), opts.okLabel || '确定')
+      okBtn.type = 'button'
+      cancelBtn.addEventListener('click', function () { if (typeof opts.onCancel === 'function') opts.onCancel() })
+      okBtn.addEventListener('click', function () { if (typeof opts.onConfirm === 'function') opts.onConfirm() })
+      actions.appendChild(cancelBtn)
+      actions.appendChild(okBtn)
+      modal.appendChild(actions)
+      return modal
+    }
+
+    /** 重命名分组弹窗（冲突时调用方保留弹窗并 Toast 报错）。 */
+    function buildRenameModal(currentName, onCancel, onConfirm) {
+      var modal = el('div', 'cmd-pad-modal')
+      modal.appendChild(el('div', 'cmd-pad-modal-title', '重命名分组'))
+      modal.appendChild(el('div', 'cmd-pad-modal-message', '将「' + currentName + '」重命名为：'))
+      var input = el('input', 'cmd-pad-form-input')
+      input.type = 'text'
+      input.value = currentName
+      modal.appendChild(input)
+      var actions = el('div', 'cmd-pad-form-actions')
+      var cancelBtn = el('button', 'cmd-pad-btn', '取消')
+      cancelBtn.type = 'button'
+      var okBtn = el('button', 'cmd-pad-btn-primary', '确定')
+      okBtn.type = 'button'
+      cancelBtn.addEventListener('click', function () { if (typeof onCancel === 'function') onCancel() })
+      okBtn.addEventListener('click', function () { if (typeof onConfirm === 'function') onConfirm(input.value) })
+      actions.appendChild(cancelBtn)
+      actions.appendChild(okBtn)
+      modal.appendChild(actions)
+      return modal
+    }
+
+    // ── 右键菜单（模块级单例：同时只存在一个）──
+    var contextMenuEl = null
+
+    function closeContextMenu() {
+      if (contextMenuEl !== null && contextMenuEl.parentNode !== null) contextMenuEl.parentNode.removeChild(contextMenuEl)
+      contextMenuEl = null
+    }
+
+    /** items: [{ label, danger?, onClick } | { sep: true }]。点击项后自动关闭。 */
+    function openContextMenu(x, y, items) {
+      closeContextMenu()
+      var menu = el('div', 'cmd-pad-menu')
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i]
+        if (it.sep) {
+          menu.appendChild(el('div', 'cmd-pad-menu-sep'))
+          continue
+        }
+        var btn = el('button', 'cmd-pad-menu-item', it.label)
+        btn.type = 'button'
+        if (it.danger) btn.setAttribute('data-danger', 'true')
+        btn.addEventListener('click', (function (fn) {
+          return function () { closeContextMenu(); fn() }
+        })(it.onClick))
+        menu.appendChild(btn)
+      }
+      document.body.appendChild(menu)
+      // 视口内 clamp（offsetWidth 在 stub 中缺失时用保守估算）
+      var w = menu.offsetWidth || 160
+      var h = menu.offsetHeight || items.length * 28
+      menu.style.left = Math.max(8, Math.min(x, window.innerWidth - w - 8)) + 'px'
+      menu.style.top = Math.max(8, Math.min(y, window.innerHeight - h - 8)) + 'px'
+      contextMenuEl = menu
+      // 点击菜单外任意处关闭（延迟一拍，避免本次 contextmenu 的合成事件误关）
+      setTimeout(function () {
+        document.addEventListener('click', closeContextMenu, { once: true })
+      }, 0)
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // 复制 / Toast / 数据（T03）
     // ════════════════════════════════════════════════════════════════════
 
@@ -1013,14 +1625,37 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * Toast（z-index 90）：单条复用，新消息替换旧的；2s 自动隐藏。
+     * Toast（z-index 90）：单条复用，新消息替换旧的；2s 自动隐藏；
+     * T04 起支持操作按钮（如删除后的「撤销」）。
      */
     function createToast(root) {
       var toast = el('div', 'cmd-pad-toast')
+      var msg = el('span')
+      var actionBtn = el('button', 'cmd-pad-toast-action')
+      toast.appendChild(msg)
+      toast.appendChild(actionBtn)
       root.appendChild(toast)
       var timer = null
-      return function showToast(message, kind) {
-        toast.textContent = message
+      var currentAction = null
+      actionBtn.addEventListener('click', function () {
+        if (currentAction === null) return
+        var fn = currentAction
+        currentAction = null
+        if (timer !== null) { clearTimeout(timer); timer = null }
+        toast.removeAttribute('data-show')
+        fn()
+      })
+      return function showToast(message, kind, actionLabel, onAction) {
+        msg.textContent = message
+        if (typeof actionLabel === 'string' && typeof onAction === 'function') {
+          actionBtn.textContent = actionLabel
+          actionBtn.style.display = ''
+          currentAction = onAction
+        } else {
+          actionBtn.textContent = ''
+          actionBtn.style.display = 'none'
+          currentAction = null
+        }
         if (kind === 'error') toast.setAttribute('data-kind', 'error')
         else toast.removeAttribute('data-kind')
         toast.setAttribute('data-show', 'true')
@@ -1028,7 +1663,7 @@ window.__ModuleLoader__.load({
         timer = setTimeout(function () {
           toast.removeAttribute('data-show')
           timer = null
-        }, 2000)
+        }, 4000)
       }
     }
 
@@ -1209,6 +1844,7 @@ window.__ModuleLoader__.load({
         var root = createRoot()
         var shell = createDrawer(closeDrawer)
         var drawer = shell.drawer
+        var addBtn = shell.addBtn
         var searchInput = shell.searchInput
         var searchCount = shell.searchCount
         var groupsEl = shell.groupsEl
@@ -1216,12 +1852,14 @@ window.__ModuleLoader__.load({
         drawer.style.width = loadDrawerWidth() + 'px'
         attachResize(drawer)
 
-        // ── T03 状态 ──
+        // ── T03/T04 状态 ──
         var data = null               // { library, state, cwd, mtime }
         var activeView = 'all'        // all | current-project | ungrouped | group:<name>
         var searchQuery = ''          // 非空 = 搜索态
         var moreExpanded = false
         var toast = createToast(root)
+        var overlay = null            // 弹窗遮罩（表单/确认）
+        var undoState = null          // { snapshot, timer } 删除撤销（5s）
 
         function findCommand(cmdId) {
           if (data === null || !Array.isArray(data.library.commands)) return null
@@ -1427,7 +2065,284 @@ window.__ModuleLoader__.load({
           })
         }
 
+        // ── T04：写操作（添加/编辑/删除/重命名/常驻 + 撤销）──
+
+        function persistLibrary(library, onDone) {
+          var p
+          try {
+            p = window.fetch('/cmd-pad/api/library', {
+              method: 'PUT',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ library: library }),
+            }).then(function (res) {
+              if (!res.ok) throw new Error('library put failed: ' + res.status)
+              return res.json()
+            })
+          } catch (error) {
+            p = Promise.reject(error)
+          }
+          p.then(function () { onDone(true) }, function () { onDone(false) })
+        }
+
+        function persistState(patch) {
+          try {
+            window.fetch('/cmd-pad/api/state', {
+              method: 'PUT',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(patch),
+            }).catch(function () {})
+          } catch (error) { /* 静默 */ }
+        }
+
+        function showModal(node) {
+          if (overlay === null) {
+            overlay = el('div', 'cmd-pad-overlay')
+            document.body.appendChild(overlay)
+          }
+          clearEl(overlay)
+          overlay.appendChild(node)
+          overlay.style.display = 'flex'
+        }
+
+        function hideModal() {
+          if (overlay !== null) {
+            overlay.style.display = 'none'
+            clearEl(overlay)
+          }
+        }
+
+        function modalOpen() {
+          return overlay !== null && overlay.style.display === 'flex'
+        }
+
+        function displayNameOf(groupName) {
+          var model = currentModel()
+          return model.displayNames[groupName] || groupName
+        }
+
+        /** 全部分组名（含无命令的常驻分组），用于重命名冲突检测。 */
+        function allGroupNames() {
+          var model = currentModel()
+          var names = {}
+          for (var k in model.groupSet) {
+            if (Object.prototype.hasOwnProperty.call(model.groupSet, k)) names[k] = true
+          }
+          var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
+          for (var i = 0; i < pinned.length; i++) {
+            if (!names[pinned[i]]) names[pinned[i]] = true
+          }
+          return names
+        }
+
+        /** 表单分组选项：自定义（常驻在前，含无命令常驻）→ 项目（当前项目 → 其他项目）。 */
+        function groupOptions() {
+          var model = currentModel()
+          var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
+          var seen = {}
+          var opts = []
+          var customOrder = model.pinnedCustom.concat(model.unpinnedCustom)
+          for (var i = 0; i < pinned.length; i++) {
+            var pg = pinned[i]
+            if (!isProjectGroup(pg) && customOrder.indexOf(pg) === -1) customOrder.push(pg)
+          }
+          for (var j = 0; j < customOrder.length; j++) {
+            var cg = customOrder[j]
+            if (seen[cg]) continue
+            seen[cg] = true
+            opts.push({ name: cg, display: cg, pinned: pinned.indexOf(cg) !== -1 })
+          }
+          var projs = []
+          if (model.cwd) projs.push(model.cwd)
+          for (var k = 0; k < model.otherProjects.length; k++) projs.push(model.otherProjects[k])
+          for (var m = 0; m < projs.length; m++) {
+            var pp = projs[m]
+            if (seen[pp]) continue
+            seen[pp] = true
+            opts.push({ name: pp, display: model.displayNames[pp] || pathBase(pp), pinned: false })
+          }
+          return opts
+        }
+
+        function openAddForm() {
+          var model = currentModel()
+          var checkedSet = {}
+          var defs = defaultCheckedGroups(activeView, model, data.state, data.cwd)
+          for (var i = 0; i < defs.length; i++) checkedSet[defs[i]] = true
+          showModal(buildFormModal({
+            mode: 'add',
+            groupOptions: groupOptions(),
+            checkedSet: checkedSet,
+            toast: toast,
+            onCancel: hideModal,
+            onSubmit: function (payload) { submitCommand(payload, null) },
+          }))
+        }
+
+        function openEditForm(cmdId) {
+          var cmd = findCommand(cmdId)
+          if (cmd === null) return
+          var checkedSet = {}
+          var groups = cmd.groups || []
+          for (var i = 0; i < groups.length; i++) checkedSet[groups[i]] = true
+          showModal(buildFormModal({
+            mode: 'edit',
+            cmd: cmd,
+            groupOptions: groupOptions(),
+            checkedSet: checkedSet,
+            toast: toast,
+            onCancel: hideModal,
+            onSubmit: function (payload) { submitCommand(payload, cmdId) },
+          }))
+        }
+
+        function submitCommand(payload, editId) {
+          var commands = data.library.commands
+          var next
+          if (editId !== null) {
+            next = commands.map(function (c) { return c.id === editId ? Object.assign({}, c, payload) : c })
+          } else {
+            next = commands.concat([Object.assign({ id: generateCommandId(payload.title) }, payload)])
+          }
+          persistLibrary(Object.assign({}, data.library, { commands: next }), function (ok) {
+            if (!ok) {
+              toast('保存失败', 'error')
+              return
+            }
+            data.library = Object.assign({}, data.library, { commands: next })
+            hideModal()
+            renderAll()
+            toast(editId !== null ? '已保存' : '已添加')
+          })
+        }
+
+        /** 删除/重命名等结构变更：保存快照 → PUT → 渲染 + 5s 可撤销。 */
+        function mutateLibrary(transform, message) {
+          var snapshot = JSON.parse(JSON.stringify(data.library))
+          var next = transform(snapshot)
+          persistLibrary(next, function (ok) {
+            if (!ok) {
+              toast('保存失败', 'error')
+              return
+            }
+            data.library = next
+            armUndo(snapshot, message)
+            renderAll()
+          })
+        }
+
+        /** 5 秒内可撤销（Toast 带「撤销」操作）。 */
+        function armUndo(snapshot, message) {
+          if (undoState !== null && undoState.timer !== null) clearTimeout(undoState.timer)
+          var timer = setTimeout(function () {
+            if (undoState !== null && undoState.timer === timer) undoState = null
+          }, 5000)
+          undoState = { snapshot: snapshot, timer: timer }
+          toast(message + '（5 秒内可撤销）', null, '撤销', function () {
+            if (undoState === null) return
+            clearTimeout(undoState.timer)
+            var snap = undoState.snapshot
+            undoState = null
+            persistLibrary(snap, function (ok) {
+              if (!ok) {
+                toast('撤销失败', 'error')
+                return
+              }
+              data.library = snap
+              renderAll()
+              toast('已撤销')
+            })
+          })
+        }
+
+        /** 命令删除（设计文档 §3.5 语境语义：解关联 vs 彻底删除 + 确认）。 */
+        function requestDeleteCommand(cmdId) {
+          var cmd = findCommand(cmdId)
+          if (cmd === null) return
+          var plan = deletionPlan(cmd, activeView)
+          if (plan.mode === 'unlink') {
+            // 仅解除当前分组关联（静默）
+            mutateLibrary(function (lib) {
+              return Object.assign({}, lib, { commands: lib.commands.map(function (c) {
+                if (c.id !== cmdId) return c
+                return Object.assign({}, c, { groups: c.groups.filter(function (g) { return g !== plan.group }) })
+              }) })
+            }, '已从「' + displayNameOf(plan.group) + '」解关联')
+            return
+          }
+          showModal(buildConfirmModal({
+            title: '删除命令',
+            message: '确定彻底删除「' + cmd.title + '」？\n删除后 5 秒内可撤销。',
+            danger: false,
+            okLabel: '删除',
+            onCancel: hideModal,
+            onConfirm: function () {
+              hideModal()
+              mutateLibrary(function (lib) {
+                return Object.assign({}, lib, { commands: lib.commands.filter(function (c) { return c.id !== cmdId }) })
+              }, '已删除')
+            },
+          }))
+        }
+
+        /** 分组删除（右键）：确认弹窗列出影响（N 解关联 / M 彻底删除）。 */
+        function requestDeleteGroup(name) {
+          var plan = groupDeletionPlan(name, data.library)
+          var message = '删除分组「' + name + '」：\n' +
+            plan.affected.length + ' 条命令解除关联，其中 ' + plan.deletedOnly.length + ' 条仅此分组的将彻底删除。\n删除后 5 秒内可撤销。'
+          showModal(buildConfirmModal({
+            title: '删除分组',
+            message: message,
+            danger: plan.deletedOnly.length > 0,
+            okLabel: '删除',
+            onCancel: hideModal,
+            onConfirm: function () {
+              hideModal()
+              mutateLibrary(function (lib) {
+                return Object.assign({}, lib, { commands: lib.commands.map(function (c) {
+                  var groups = c.groups || []
+                  if (groups.indexOf(name) === -1) return c
+                  var rest = groups.filter(function (g) { return g !== name })
+                  return rest.length === 0 ? null : Object.assign({}, c, { groups: rest })
+                }).filter(Boolean) })
+              }, '分组已删除')
+            },
+          }))
+        }
+
+        /** 分组重命名（仅自定义分组）：级联更新 + 冲突拒绝（弹窗保留可改）。 */
+        function requestRenameGroup(name) {
+          if (isProjectGroup(name)) return
+          showModal(buildRenameModal(name, hideModal, function (newName) {
+            var result = renameGroup(data.library, name, newName, allGroupNames())
+            if (!result.ok) {
+              toast(result.reason, 'error')
+              return
+            }
+            hideModal()
+            mutateLibrary(function () { return result.library }, '分组已重命名')
+            var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
+            if (pinned.indexOf(name) !== -1) {
+              var nextPinned = pinned.map(function (g) { return g === name ? newName : g })
+              data.state.pinnedGroups = nextPinned
+              persistState({ pinnedGroups: nextPinned })
+            }
+          }))
+        }
+
+        /** 常驻切换（右键分组项）：state.pinnedGroups 持久化 + 侧栏重排。 */
+        function toggleGroupPinned(name) {
+          var next = togglePinned(data.state.pinnedGroups, name)
+          data.state.pinnedGroups = next
+          persistState({ pinnedGroups: next })
+          renderAll()
+        }
+
         // ── 事件委托（一次绑定，随重渲染复用）──
+        addBtn.addEventListener('click', function () {
+          if (data === null) return
+          openAddForm()
+        })
+
         groupsEl.addEventListener('click', function (event) {
           var target = event.target || groupsEl
           var moreBtn = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-more-toggle') !== null })
@@ -1437,6 +2352,24 @@ window.__ModuleLoader__.load({
           }
           var row = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-view-id') !== null })
           if (row !== null) selectView(row.getAttribute('data-view-id'))
+        })
+
+        // 分组项右键（自定义分组：设为常驻/取消常驻、重命名、删除；项目分组无操作）
+        groupsEl.addEventListener('contextmenu', function (event) {
+          var target = event.target || groupsEl
+          if (typeof event.preventDefault === 'function') event.preventDefault()
+          var row = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-view-id') !== null })
+          if (row === null) return
+          var viewId = row.getAttribute('data-view-id')
+          if (viewId.slice(0, 6) !== 'group:') return
+          var name = viewId.slice(6)
+          if (isProjectGroup(name)) return // §3.1 项目分组由系统管理，无右键操作
+          var pinned = (Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []).indexOf(name) !== -1
+          openContextMenu(event.clientX || 0, event.clientY || 0, [
+            { label: pinned ? '取消常驻' : '设为常驻', onClick: function () { toggleGroupPinned(name) } },
+            { label: '重命名', onClick: function () { requestRenameGroup(name) } },
+            { label: '删除', danger: true, onClick: function () { requestDeleteGroup(name) } },
+          ])
         })
 
         contentEl.addEventListener('click', function (event) {
@@ -1451,6 +2384,20 @@ window.__ModuleLoader__.load({
             var card = closestUp(copyEl, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
             onCopyCommand(card !== null ? card.getAttribute('data-cmd-id') : null)
           }
+        })
+
+        // 卡片右键（复制 / 编辑 / 删除；运行在 T05 随运行通道加入）
+        contentEl.addEventListener('contextmenu', function (event) {
+          var target = event.target || contentEl
+          if (typeof event.preventDefault === 'function') event.preventDefault()
+          var card = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
+          if (card === null) return
+          var cmdId = card.getAttribute('data-cmd-id')
+          openContextMenu(event.clientX || 0, event.clientY || 0, [
+            { label: '复制', onClick: function () { onCopyCommand(cmdId) } },
+            { label: '编辑', onClick: function () { openEditForm(cmdId) } },
+            { label: '删除', danger: true, onClick: function () { requestDeleteCommand(cmdId) } },
+          ])
         })
 
         searchInput.addEventListener('input', function () {
@@ -1496,9 +2443,19 @@ window.__ModuleLoader__.load({
           else openDrawer()
         })
         var onKeydown = function onKeydown(event) {
-          if (drawer.getAttribute('data-open') !== 'true') return
           if (event.key === 'Escape') {
-            // Esc 链（功能文档 §4.4）：搜索非空 → 清空搜索；否则收起抽屉
+            // Esc 链（功能文档 §4.4）：弹层 → 右键菜单 → 清空搜索 → 收起抽屉
+            if (modalOpen()) {
+              hideModal()
+              if (typeof event.preventDefault === 'function') event.preventDefault()
+              return
+            }
+            if (contextMenuEl !== null) {
+              closeContextMenu()
+              if (typeof event.preventDefault === 'function') event.preventDefault()
+              return
+            }
+            if (drawer.getAttribute('data-open') !== 'true') return
             if (searchQuery !== '') {
               clearSearch()
               if (typeof event.preventDefault === 'function') event.preventDefault()
@@ -1507,7 +2464,7 @@ window.__ModuleLoader__.load({
             closeDrawer()
             return
           }
-          if (event.key === '/') {
+          if (event.key === '/' && drawer.getAttribute('data-open') === 'true') {
             var target = event.target
             var tag = target !== null && target !== undefined ? target.tagName : undefined
             if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !(target !== null && target.isContentEditable)) {
@@ -1526,6 +2483,10 @@ window.__ModuleLoader__.load({
         return function dispose() {
           document.removeEventListener('keydown', onKeydown)
           window.removeEventListener('resize', onResize)
+          if (undoState !== null && undoState.timer !== null) clearTimeout(undoState.timer)
+          undoState = null
+          closeContextMenu()
+          hideModal()
           pushLayoutForDrawer(drawer, false)
           if (root.parentNode !== null) root.parentNode.removeChild(root)
           removeStyle()
@@ -1551,6 +2512,13 @@ window.__ModuleLoader__.load({
       getCurrentSessionId: getCurrentSessionId,
       highlightText: highlightText,
       copyText: copyText,
+      generateCommandId: generateCommandId,
+      dangerKeywordHits: dangerKeywordHits,
+      defaultCheckedGroups: defaultCheckedGroups,
+      deletionPlan: deletionPlan,
+      groupDeletionPlan: groupDeletionPlan,
+      renameGroup: renameGroup,
+      togglePinned: togglePinned,
     }
     return module.exports
   },
