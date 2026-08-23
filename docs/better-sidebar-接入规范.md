@@ -136,25 +136,27 @@ ctx.effect(() => bs.registerTab({
 
 ## 3. 终端直写通道（运行功能，实证协议）
 
-> ⚠️ **本条为未来 T07 恢复运行的协议依据，当前不落地**（运行功能已按用户决策移除，
-> TASK.md 调整记录 #21；协议已对源码实证，保留供恢复时直接使用）。
-
-> 功能文档 §4.2 的三级降级链所依赖的协议，已对 `src/index.ts`（`attachTerminal`）与
-> `src/client/TerminalView.tsx` 逐行核实。**注意：这是 better-sidebar 未文档化承诺的内部协议，**
+> ✅ **已落地（T07，2026-08-23）**：运行功能按用户决策恢复为「新开专用终端 + 终端直写」
+> （TASK.md 调整记录 #24），本条约协议已对**实际安装 v0.13.1** 实机实证（双 WS 附加 13/13 +
+> 端到端写文件副作用验证），非仅源码核实。**这是 better-sidebar 未文档化承诺的内部协议，**
 > **版本升级可能变更——每次升级 better-sidebar 后必须回归验证（功能文档 §8 待确认项 1）。**
 
-### 3.1 协议事实（v0.15.1 实证）
+### 3.1 协议事实（v0.15.1 源码 + v0.13.1 实机实证）
 
 - 端点：`WS /sidebar/ws/terminal`，UI 终端查询参数 `?sessionId=<id>&tab=<tabId>&cwd=<cwd>`
-  （`cwd` 可省，缺省取会话权威 cwd）。
+  （`cwd` 可省，缺省取会话权威 cwd；`sessionCwdOf` 优先会话 `header.cwd`，无则 `requireAbsolute(clientCwd)`）。
 - **输入帧 = 原始文本**（与 xterm `onData` 协议一致）；发送 `命令文本 + '\r'` 即执行。
 - 控制帧为 JSON：`{type:'resize',cols,rows}` / `{type:'close'}` / `{type:'park'}`。
   宿主判定逻辑：**能 `JSON.parse` 成对象**才当控制帧候选，其余一律原样写入 pty。
 - 连接建立后宿主**先回放该 pty 的历史 transcript**，再推实时输出——短命写入连接会收到一份历史输出，
   忽略即可（面板不负责展示）。
-- **同一 pty 支持多路 WS 并存**：每路连接独立订阅 `onData`，互不干扰；我方连接 bare drop（直接关闭，
-  不发 close 帧）走 reconnect grace，pty 与用户侧视图均不受影响。
+- **同一 pty 支持多路 WS 并存**：每路连接独立订阅 `onData`，互不干扰（实机实证：
+  连接 A/B 附加同一 pty，B 写入 A 可见、A 写入 B 可见、B 附加不重建 pty、双工对称）。
 - **不要发 `{type:'close'}` 帧**——它会立即释放终端配额并关闭该终端（用户视角 = 终端被杀）。
+- **pty 配额 `terminalsPerSession`（默认 3，`config.ts`）独立于 UI 配额 `TERMINAL_LIMIT`**：
+  附加 WS 时 `ptyManager.open` 对超配额抛 `SidebarError` → 宿主 `ws.close(1011)`。
+- **连接建立后先回放 transcript 再推实时输出**：新 spawn 的 pty transcript 为空，
+  需等实时输出（banner + 提示符）才能判定 shell 就绪。
 
 ### 3.2 陷阱（必须记住）
 
@@ -162,28 +164,42 @@ ctx.effect(() => bs.registerTab({
 |---|---|---|
 | 命令文本恰好是合法 JSON 对象且带 `type: 'close'/'park'` 字段 | 被宿主解释为控制帧，命令丢失甚至终端被关 | 极端边缘；如发现，在文本前补一个空格或先写 `echo` 包裹——常规 shell 命令不会触发 |
 | 终端 tab id 是 **`terminal:<uuid>`**（v0.13 起），不是旧文档的 `terminal:<n>` | 解析数字序号会拿到 undefined | 从 `bs.getSnapshot()` 遍历 `type === 'terminal'` 的 tab，**不解析 id 结构** |
-| `agent:` 前缀的 tab 是 agent 拥有的终端（`?uuid=` 通道） | 用 `?tab=` 附加会失败 | 复用终端时**排除 `agent:` 前缀的 tab** |
-| UI 终端配额 `TERMINAL_LIMIT = 3`，满额时 `createTab` 返回 null | `openTab({type:'terminal'})` 静默无效 | 降级链第二级（写对话输入框）兜底 |
-| terminal 描述符有 `createTab`，`openTab` seed 的 title/path/id 被忽略 | 无法定向打开特定终端 | 复用靠遍历 snapshot 选目标，不靠 seed |
+| `agent:` 前缀的 tab 是 agent 拥有的终端（`?uuid=` 通道） | 用 `?tab=` 附加会失败 | 选目标终端时**排除 `agent:` 前缀的 tab** |
+| **pty 配额（`terminalsPerSession` 默认 3）满时附加被宿主拒绝**（close 1011） | 命令无法写入；且 openTab 创建的 UI tab 泄漏 | **失败后 `bs.closeTab` 回滚刚创建的 tab**（防泄漏）；再走降级链 |
+| **新开专用终端（无 UI 视图长连）发送后 bare drop** | reconnect grace（默认 30s）到期后 **pty 被杀**——长命令/交互命令中途中断（实机实证：probe 附加 drop 后 UI 终端 pty 重建只剩 banner） | **发送后保持连接不 drop**（连接随宿主生命周期：用户关 tab / 页面刷新自然结束） |
+| **PowerShell 冷启动慢**（profile 加载实测 6–7s），未就绪时写入被吞 | 命令「发送成功」但未执行 | **等输出流出现提示符 `>` 再发送**（25s 超时兜底仍尽力发送） |
+| UI 终端配额 `TERMINAL_LIMIT = 3`（createTab 检查），pty 配额 `terminalsPerSession = 3`（PtyManager 检查） | `openTab` 静默无效 / 附加被拒 | 差集识别不到新终端或 WS close → 降级链（复制 + Toast） |
+| terminal 描述符有 `createTab`，`openTab` seed 的 title/path/id 被忽略 | 无法定向打开特定终端 | 新开靠**差集识别**（openTab 前后 snapshot 对比），不靠 seed |
 | `available` 不拦截 `openTab`；但设置页禁用 terminal 卡片会拦截（no-op + console.warn） | 用户禁用终端后运行静默失败 | 失败检测后走降级链 |
 
-### 3.3 选定目标终端的推荐流程
+### 3.3 新开专用终端的推荐流程（用户决策 2026-08-23，TASK.md 调整记录 #24）
+
+> 用户决策：**每次运行新开专用终端 Tab**（不复用活跃终端，避免干扰用户侧视图——
+> 设计文档 §8 待确认项 2 的备选策略被选定）。cmd-pad 落地如下：
 
 ```
-snapshot = bs.getSnapshot()                       // { sessionId, state, prefs }
-tabs = 遍历 state.splits 所有叶子的 tabs
-候选 = tabs.filter(t => t.type === 'terminal' && !t.id.startsWith('agent:'))
-有候选 → 取最后一个（最近打开的）t.id
-无候选 → bs.openTab({ type: 'terminal' })，再从新 snapshot 取新终端 id
-       （createTab 返回 null / 被设置禁用 → snapshot 无新终端 → 降级）
-ws = new WebSocket(`/sidebar/ws/terminal?sessionId=...&tab=...&cwd=...`)
-ws.onopen → send(cmd + '\r') → 发送完 ws.close()（bare drop，勿发 close 帧）
-危险命令：send(cmd) 不带 '\r'（停在提示符，双人工确认，功能文档 §4.2）
+scope = { sessionId, cwd }                        // 主形态 Tab props.scope（权威来源）
+before = 遍历 snapshot state.splits + state.bottomSplits 叶子的 tabs
+         （过滤 type==='terminal' && !agent: 前缀）
+bs.openTab({ type: 'terminal' }, scope)           // 新开专用终端
+after  = 同上（重新 getSnapshot）
+target = after 中 id 不在 before 里的终端（差集识别）
+target 为空 → 配额满/禁用/被拒 → 降级链（复制 + Toast「已复制，到终端粘贴执行」）
+try { bs.activateTab(target.id, scope) }          // 激活新终端（确保用户可见）
+ws = new WebSocket(`/sidebar/ws/terminal?sessionId&tab&cwd`)
+ws.onopen → 等输出流出现提示符 `>`（shell 就绪）→ send(cmd + '\r')
+          → 发送后**保持连接不 drop**（保 pty 活，见 §3.2 陷阱）
+ws 任一失败（throw / error / close / 超时 30s）→ bs.closeTab(target.id) 回滚 → 降级链
+危险命令：send(cmd) 不带 '\r'（停在提示符，双人工确认，§3.4）
 ```
+
+**降级链（用户确认定稿）**：终端直写失败 → **直接复制 + Toast 明示**（不再写对话输入框——
+该方案已被用户否决，TASK.md 调整记录 #21）。降级形态（无 better-sidebar）不渲染运行入口，只复制。
 
 ### 3.4 危险命令语义（不变）
 
-`danger: true` 确认弹窗后只发送命令文本、不发送 `\r`，由用户在终端内亲自回车。
+`danger: true` 确认弹窗（命令原文 `.cmd-pad-modal-pre`）后只发送命令文本、不发送 `\r`，
+由用户在终端内亲眼确认后亲自回车（实机实证：危险命令停在提示符，无执行输出）。
 
 ---
 
@@ -238,10 +254,11 @@ if (bs.features.includes('pluginSettings')) { // v0.12.0+：settings.pluginToggl
      挂载，与插件 apply 时序不定，打开时探测最可靠）。T06 主形态下 cmd-pad 不自建浮层，
      此避让逻辑不再需要。
 6. ~~任一运行通道失败 → 写对话输入框（`ctx.get('conversation')` 探测，`setDraft`）→ 复制 + Toast。~~
-   **本条暂缓**（TASK.md 调整记录 #21，2026-08-23）：运行功能已按用户决策整体移除，
-   conversation 探测链（`ctx.get('sessions').scope(id)` → `ctx.get('conversation').input.for(actx)`
-   → `setDraft`）当前无消费方；未来恢复运行通道时按本条重新落地并回归（契约参考
-   better-sidebar `src/client/conversation-draft.ts`）。
+   **已定稿为「直接复制」**（TASK.md 调整记录 #21 + #24，2026-08-23）：写对话输入框方案
+   已被用户否决，不再恢复；T07 落地时用户确认**终端直写失败 → 直接复制 + Toast
+   「已复制，到终端粘贴执行」**。conversation 探测链（`ctx.get('sessions').scope(id)` →
+   `ctx.get('conversation').input.for(actx)` → `setDraft`）当前**无消费方**，契约参考
+   better-sidebar `src/client/conversation-draft.ts` 保留备查。
 
 ---
 

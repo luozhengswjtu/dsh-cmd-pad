@@ -483,6 +483,22 @@ window.__ModuleLoader__.load({
       '  white-space:pre-wrap;',
       '  word-break:break-all;',
       '}',
+      // T07：危险命令确认弹窗的命令原文块（双人工确认，功能文档 §4.3）
+      '.cmd-pad-modal-pre{',
+      '  font-family:var(--dsw-alias-font-mono,Consolas,Menlo,monospace);',
+      '  font-size:12px;',
+      '  line-height:1.6;',
+      '  white-space:pre-wrap;',
+      '  word-break:break-all;',
+      '  background:var(--dsw-alias-bg-base,var(--cp-bg-base,#1c1d21));',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  border-radius:6px;',
+      '  padding:8px 10px;',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '  margin-bottom:10px;',
+      '  max-height:200px;',
+      '  overflow-y:auto;',
+      '}',
       '.cmd-pad-form-row{',
       '  margin-bottom:8px;',
       '}',
@@ -1282,6 +1298,11 @@ window.__ModuleLoader__.load({
 
     // ── 命令卡片 / 分节 / 空态（T03 渲染）──
 
+    // T07 模块级运行入口标志：主形态 panel 置 true（降级形态永远 false）。
+    // 模块级而非 panel 级：同页面只会存在一种形态（主形态多会话 panel 均为 true），
+    // cardEl 是模块级渲染函数，无法闭包访问 panel 局部变量。
+    var runEnabledFlag = false
+
     function cardEl(cmd, query) {
       var card = el('div', 'cmd-pad-card')
       card.setAttribute('data-cmd-id', cmd.id)
@@ -1302,6 +1323,14 @@ window.__ModuleLoader__.load({
         card.appendChild(note)
       }
       var actions = el('div', 'cmd-pad-card-actions')
+      // T07：运行按钮仅主形态（有 better-sidebar 终端直写通道）渲染；降级形态只复制（用户决策）
+      if (runEnabledFlag) {
+        var runBtn = el('button', 'cmd-pad-btn cmd-pad-btn-run', '运行')
+        runBtn.type = 'button'
+        runBtn.setAttribute('data-run-cmd', '')
+        runBtn.title = '在新终端中运行'
+        actions.appendChild(runBtn)
+      }
       var copyBtn = el('button', 'cmd-pad-btn', '复制')
       copyBtn.type = 'button'
       copyBtn.setAttribute('data-copy-cmd', '')
@@ -1511,7 +1540,27 @@ window.__ModuleLoader__.load({
       return modal
     }
 
-    /** 重命名分组弹窗（冲突时调用方保留弹窗并 Toast 报错）。 */
+    /** T07：危险命令运行确认弹窗（双人工确认，功能文档 §4.3）——命令原文 + 确认/取消。 */
+    function buildRunConfirmModal(cmd, onCancel, onConfirm) {
+      var modal = el('div', 'cmd-pad-modal')
+      modal.appendChild(el('div', 'cmd-pad-modal-title', '运行危险命令'))
+      modal.appendChild(el('div', 'cmd-pad-modal-message',
+        '以下命令已标记为危险。将在新终端中打开并停在提示符（不会自动执行），请确认命令内容，并在终端中亲自回车执行：'))
+      var pre = el('div', 'cmd-pad-modal-pre')
+      pre.textContent = cmd.cmd
+      modal.appendChild(pre)
+      var actions = el('div', 'cmd-pad-form-actions')
+      var cancelBtn = el('button', 'cmd-pad-btn', '取消')
+      cancelBtn.type = 'button'
+      var okBtn = el('button', 'cmd-pad-btn cmd-pad-btn-danger', '确认，打开终端')
+      okBtn.type = 'button'
+      cancelBtn.addEventListener('click', function () { if (typeof onCancel === 'function') onCancel() })
+      okBtn.addEventListener('click', function () { if (typeof onConfirm === 'function') onConfirm() })
+      actions.appendChild(cancelBtn)
+      actions.appendChild(okBtn)
+      modal.appendChild(actions)
+      return modal
+    }
     function buildRenameModal(currentName, onCancel, onConfirm) {
       var modal = el('div', 'cmd-pad-modal')
       modal.appendChild(el('div', 'cmd-pad-modal-title', '重命名分组'))
@@ -1700,6 +1749,225 @@ window.__ModuleLoader__.load({
           body: JSON.stringify({ lastUsedViewId: viewId, viewLastUsedAt: { [viewId]: Date.now() } }),
         }).catch(function () {})
       } catch (error) { /* 静默：状态刷新失败不影响复制 */ }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // T07 终端直写运行通道（主形态；接入规范 §3 协议，v0.13.1 实机实证）
+    //
+    // 用户决策（TASK.md 调整记录 #21 后确认，2026-08-23）：
+    //   - 运行 = **新拉起专用终端 Tab**（bs.openTab 新开，不复用用户活跃终端）→
+    //     短命 WS 附加 /sidebar/ws/terminal 发送命令 → bare drop；
+    //   - 终端直写失败（配额满 / 设置页禁用 / 新开被拒 / WS 失败）→ 复制 + Toast
+    //     明示「已复制，到终端粘贴执行」（不再写对话输入框——该方案已被用户否决）；
+    //   - 危险命令（danger: true）：确认弹窗后只发文本不带 \r，停在提示符由用户
+    //     在终端里亲自回车（双人工确认，功能文档 §4.3）；
+    //   - 降级形态（无 better-sidebar）：不渲染运行入口，只提供复制。
+    // ════════════════════════════════════════════════════════════════════
+
+    /** 从 snapshot 遍历全部终端 tab（splits + bottomSplits 所有叶子的 tabs），排除 agent: 前缀。 */
+    function terminalTabsOf(snapshot) {
+      if (snapshot === null || typeof snapshot !== 'object') return []
+      var state = snapshot.state
+      if (state === null || typeof state !== 'object') return []
+      var tabs = []
+      collectLeafTabs(state.splits, tabs)
+      collectLeafTabs(state.bottomSplits, tabs)
+      return tabs.filter(function (t) {
+        return t !== null && typeof t === 'object' && t.type === 'terminal' && !String(t.id).startsWith('agent:')
+      })
+    }
+
+    function collectLeafTabs(node, out) {
+      if (node === null || node === undefined) return
+      if (Array.isArray(node)) {
+        for (var i = 0; i < node.length; i++) collectLeafTabs(node[i], out)
+        return
+      }
+      if (typeof node !== 'object') return
+      if (Array.isArray(node.tabs)) {
+        for (var j = 0; j < node.tabs.length; j++) out.push(node.tabs[j])
+        return
+      }
+      if (node.children !== null && node.children !== undefined && Array.isArray(node.children)) {
+        for (var k = 0; k < node.children.length; k++) collectLeafTabs(node.children[k], out)
+        return
+      }
+      if (node.left !== null && node.left !== undefined) collectLeafTabs(node.left, out)
+      if (node.right !== null && node.right !== undefined) collectLeafTabs(node.right, out)
+    }
+
+    /** 新开终端识别：after 中 id 不在 before 里的终端 tab（openTab 刚 mint 的那个）。 */
+    function pickNewTerminalTab(before, after) {
+      if (!Array.isArray(after)) return null
+      var seen = {}
+      if (Array.isArray(before)) {
+        for (var i = 0; i < before.length; i++) {
+          if (before[i] !== null && typeof before[i] === 'object') seen[before[i].id] = true
+        }
+      }
+      for (var j = 0; j < after.length; j++) {
+        var t = after[j]
+        if (t === null || typeof t !== 'object') continue
+        if (t.type !== 'terminal' || String(t.id).startsWith('agent:')) continue
+        if (!seen[t.id]) return t
+      }
+      return null
+    }
+
+    /** 终端直写 WS URL（相对路径，浏览器同源解析；接入规范 §3.1）。 */
+    function terminalWsUrl(sessionId, tabId, cwd) {
+      var u = '/sidebar/ws/terminal?sessionId=' + encodeURIComponent(sessionId) + '&tab=' + encodeURIComponent(tabId)
+      if (typeof cwd === 'string' && cwd !== '') u += '&cwd=' + encodeURIComponent(cwd)
+      return u
+    }
+
+    /** 发送文本：危险命令不带 \r（停在提示符，双人工确认）；普通命令带 \r 直接执行。 */
+    function terminalSendText(cmd) {
+      var text = String(cmd.cmd)
+      if (cmd.danger !== true) text += '\r'
+      return text
+    }
+
+    /**
+     * 创建终端直写运行器（主形态专用）。
+     * @param bs      better-sidebar 服务实例（getSnapshot/openTab/activateTab）
+     * @param scopeFn () => ({ sessionId, cwd }) 当前 Tab scope
+     * @param toast   (msg, kind) 提示
+     * @param copyText (text, onDone) 复制（降级链末端）
+     */
+    function createTerminalRunner(bs, scopeFn, toast, copyTextFn) {
+      // 总超时须覆盖「open → 等 shell 就绪 → 发送」全程（实机教训：PowerShell 冷启动
+      // 可达 7s+，若总超时小于就绪等待，会先触发 fallback 而误杀本应成功的运行）
+      var WS_TIMEOUT_MS = 30000
+      // shell 就绪等待上限（等提示符 `>`；超时仍尽力发送）
+      var READY_TIMEOUT_MS = 25000
+
+      function fallback(cmd) {
+        copyTextFn(String(cmd.cmd), function (ok) {
+          toast(ok ? '已复制，到终端粘贴执行' : '复制失败', ok ? null : 'error')
+        })
+      }
+
+      function success(cmd) {
+        toast(cmd.danger === true ? '已写入终端，请在终端内确认后回车' : '已发送到终端')
+      }
+
+      /**
+       * 运行一条命令：
+       * 1. openTab 新开专用终端 → 从新 snapshot 差集识别新终端 tab id；
+       * 2. WS 附加 → 发送（危险不带 \r）→ 立即 bare drop（不发 {type:'close'} 帧）；
+       * 3. 任一步失败 → 复制 + Toast。
+       */
+      function run(cmd) {
+        var scope = (typeof scopeFn === 'function') ? scopeFn() : {}
+        var sessionId = (scope !== null && typeof scope === 'object' && typeof scope.sessionId === 'string') ? scope.sessionId : ''
+        var cwd = (scope !== null && typeof scope === 'object' && typeof scope.cwd === 'string') ? scope.cwd : ''
+        if (sessionId === '') { fallback(cmd); return }
+
+        // 1. 新开专用终端（用户决策：不复用活跃终端，避免干扰用户侧视图）
+        var before = []
+        var after = []
+        try {
+          var snapBefore = bs.getSnapshot()
+          before = terminalTabsOf(snapBefore)
+          var scopeArg = { sessionId: sessionId }
+          if (cwd !== '') scopeArg.cwd = cwd
+          bs.openTab({ type: 'terminal' }, scopeArg)
+          after = terminalTabsOf(bs.getSnapshot())
+        } catch (error) { /* 服务异常 → 降级 */ }
+        var target = pickNewTerminalTab(before, after)
+        if (target === null) {
+          // 终端配额满 / 设置页禁用 / createTab 被拒 → openTab 静默无效
+          fallback(cmd)
+          return
+        }
+        // 激活新终端（确保用户可见；能力缺失时忽略）
+        try { if (typeof bs.activateTab === 'function') bs.activateTab(target.id, { sessionId: sessionId }) } catch (error) { /* 忽略 */ }
+
+        // WS 失败时回滚刚创建的 UI tab（pty 配额满等场景：openTab 可能成功创建 tab
+        // 但附加被宿主拒绝，若不回滚每次失败都会泄漏一个终端 tab）
+        function rollbackTab() {
+          try { if (typeof bs.closeTab === 'function') bs.closeTab(target.id, { sessionId: sessionId }) } catch (error) { /* 忽略 */ }
+        }
+
+        // 2. 短命 WS 附加（接入规范 §3.3）
+        var WS = (typeof window !== 'undefined' && window.WebSocket) ? window.WebSocket
+          : (typeof WebSocket !== 'undefined' ? WebSocket : undefined)
+        var ws
+        try {
+          if (!WS) throw new Error('WebSocket unavailable')
+          ws = new WS(terminalWsUrl(sessionId, target.id, cwd))
+        } catch (error) { rollbackTab(); fallback(cmd); return }
+        var settled = false
+        var timer = setTimeout(function () {
+          if (!settled) {
+            settled = true
+            try { if (ws.readyState === 0 || ws.readyState === 1) ws.close() } catch (error) { /* 忽略 */ }
+            rollbackTab()
+            fallback(cmd)
+          }
+        }, WS_TIMEOUT_MS)
+        ws.addEventListener('open', function () {
+          if (settled) return
+          // 等 shell 就绪再发送：PowerShell 冷启动慢（profile 加载可达数秒），
+          // 未就绪时写入会被吞（实机教训，test/t07-ws-probe.mjs）。
+          // 就绪信号 = 输出流出现提示符特征 `>`（一旦 shell 就绪该信号只增不减）；
+          // READY_TIMEOUT_MS 超时兜底（无提示符也尽力发送）。
+          var received = ''
+          var sent = false
+          var readyTimer = setTimeout(function () {
+            if (!sent) doSend()
+          }, READY_TIMEOUT_MS)
+          function doSend() {
+            if (sent || settled) return
+            sent = true
+            clearTimeout(readyTimer)
+            try {
+              ws.send(terminalSendText(cmd))
+            } catch (error) {
+              settled = true
+              clearTimeout(timer)
+              try { ws.close() } catch (e) { /* 忽略 */ }
+              rollbackTab()
+              fallback(cmd)
+              return
+            }
+            settled = true
+            clearTimeout(timer)
+            // ⚠️ 发送后**保持连接**，不做 bare drop（实机教训，2026-08-23）：
+            // 新开专用终端没有 UI 视图长连（tab 未激活时 TerminalView 不连接），
+            // bare drop 会在 reconnect grace（默认 30s）到期后杀掉 pty——
+            // 长命令 / 交互命令会中途中断（t07-ws-probe 实证：UI 终端被 probe
+            // 附加 drop 后 pty 重建，只剩 banner）。
+            // 保持连接让 pty 永活，命令完整执行；连接随宿主生命周期自然结束
+            // （用户关闭终端 tab → 宿主 close 帧杀 pty → 本连接 close 事件触发）。
+            success(cmd)
+          }
+          ws.addEventListener('message', function (ev) {
+            if (sent || settled) return
+            received += (typeof ev.data === 'string') ? ev.data : ''
+            if (received.indexOf('>') !== -1) doSend()
+          })
+        })
+        ws.addEventListener('error', function () {
+          if (!settled) {
+            settled = true
+            clearTimeout(timer)
+            rollbackTab()
+            fallback(cmd)
+          }
+        })
+        ws.addEventListener('close', function () {
+          if (!settled) {
+            settled = true
+            clearTimeout(timer)
+            rollbackTab()
+            fallback(cmd)
+          }
+        })
+      }
+
+      return { run: run, terminalTabsOf: terminalTabsOf, pickNewTerminalTab: pickNewTerminalTab, terminalWsUrl: terminalWsUrl, terminalSendText: terminalSendText }
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -1913,6 +2181,14 @@ window.__ModuleLoader__.load({
       var pendingInitialView = false // 打开/激活时待定的初始视图（上次使用分组）
       var panelVisible = true       // T06 visible 性能门（主形态：宿主 visible；降级恒 true）
       var renderDirty = false       // 不可见期间挂起的重渲染
+
+      // ── T07 运行通道（仅主形态）：better-sidebar + scope 访问器 → 终端直写运行器 ──
+      var runner = null             // { run(cmd) }；null = 无运行入口（降级形态，只复制）
+      if (opts.betterSidebar !== null && opts.betterSidebar !== undefined && typeof opts.scope === 'function') {
+        runner = createTerminalRunner(opts.betterSidebar, opts.scope, toast, copyText)
+      }
+      var runEnabled = runner !== null
+      runEnabledFlag = runEnabled
 
       function findCommand(cmdId) {
         if (data === null || !Array.isArray(data.library.commands)) return null
@@ -2140,6 +2416,26 @@ window.__ModuleLoader__.load({
           // 刷新「上次使用」slot（功能文档 §3.4）
           applyLastUsed(cmd)
         })
+      }
+
+      /**
+       * T07 运行入口（仅主形态）：危险命令先确认弹窗（双人工确认），普通命令直接运行。
+       * 运行语义 = 新开专用终端 + 终端直写（用户决策，TASK.md 调整记录 #21 后确认）。
+       */
+      function onRunCommand(cmdId, anchorEl) {
+        if (runner === null) return
+        var cmd = findCommand(cmdId)
+        if (cmd === null || typeof cmd.cmd !== 'string') return
+        if (cmd.danger === true) {
+          showModal(buildRunConfirmModal(cmd, function onCancel() {
+            hideModal()
+          }, function onConfirm() {
+            hideModal()
+            runner.run(cmd)
+          }))
+          return
+        }
+        runner.run(cmd)
       }
 
       // ── T04：写操作（添加/编辑/删除/重命名/常驻 + 撤销）──
@@ -2456,6 +2752,13 @@ window.__ModuleLoader__.load({
           refreshData()
           return
         }
+        // T07：运行按钮（仅主形态渲染；Toast 锚定到按钮左侧，同复制）
+        var runEl = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-run-cmd') !== null })
+        if (runEl !== null) {
+          var runCard = closestUp(runEl, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
+          onRunCommand(runCard !== null ? runCard.getAttribute('data-cmd-id') : null, runEl)
+          return
+        }
         var copyEl = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-copy-cmd') !== null })
         if (copyEl !== null) {
           var card = closestUp(copyEl, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
@@ -2464,18 +2767,19 @@ window.__ModuleLoader__.load({
         }
       })
 
-      // 卡片右键（复制 / 编辑 / 删除）
+      // 卡片右键（运行[主形态] / 复制 / 编辑 / 删除；T07 恢复运行，设计文档 §4.1「运行恢复时加回首位」）
       contentEl.addEventListener('contextmenu', function (event) {
         var target = event.target || contentEl
         if (typeof event.preventDefault === 'function') event.preventDefault()
         var card = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
         if (card === null) return
         var cmdId = card.getAttribute('data-cmd-id')
-        openContextMenu(event.clientX || 0, event.clientY || 0, [
-          { label: '复制', onClick: function () { onCopyCommand(cmdId) } },
-          { label: '编辑', onClick: function () { openEditForm(cmdId) } },
-          { label: '删除', danger: true, onClick: function () { requestDeleteCommand(cmdId) } },
-        ])
+        var items = []
+        if (runEnabled) items.push({ label: '运行', onClick: function () { onRunCommand(cmdId) } })
+        items.push({ label: '复制', onClick: function () { onCopyCommand(cmdId) } })
+        items.push({ label: '编辑', onClick: function () { openEditForm(cmdId) } })
+        items.push({ label: '删除', danger: true, onClick: function () { requestDeleteCommand(cmdId) } })
+        openContextMenu(event.clientX || 0, event.clientY || 0, items)
       })
 
       searchInput.addEventListener('input', function () {
@@ -2636,6 +2940,9 @@ window.__ModuleLoader__.load({
             cwd: cwd === '' ? null : cwd,
             addBtn: null,
             toastRoot: host,
+            // T07：主形态运行通道（终端直写）——传 better-sidebar 服务 + scope 访问器
+            betterSidebar: bs,
+            scope: function () { return { sessionId: sessionId, cwd: cwd } },
             readSetting: hasPluginSettings ? function (key, def) {
               try {
                 var snap = (props.store !== null && props.store !== undefined && typeof props.store.getSnapshot === 'function') ? props.store.getSnapshot() : undefined
@@ -2792,6 +3099,12 @@ window.__ModuleLoader__.load({
       renameGroup: renameGroup,
       togglePinned: togglePinned,
       probeBetterSidebar: probeBetterSidebar,
+      // T07：终端直写运行通道纯逻辑
+      terminalTabsOf: terminalTabsOf,
+      pickNewTerminalTab: pickNewTerminalTab,
+      terminalWsUrl: terminalWsUrl,
+      terminalSendText: terminalSendText,
+      createTerminalRunner: createTerminalRunner,
     }
     return module.exports
   },

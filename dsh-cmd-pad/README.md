@@ -1,7 +1,7 @@
 # dsh-cmd-pad
 
-DSH Web UI 里的「测试命令行速查面板」：命令按**自定义分组 + 项目**归档，一键复制（运行功能暂缓，见下）。
-产品设计见 `dsh-cmd-pad-功能文档与交互设计.md`（v0.3）；落地路线见 `TASK.md`。
+DSH Web UI 里的「测试命令行速查面板」：命令按**自定义分组 + 项目**归档，一键复制；主形态（better-sidebar 在场）支持**一键运行**（新开专用终端直送执行，见下文「运行功能」）。
+产品设计见 `dsh-cmd-pad-功能文档与交互设计.md`（v0.4）；落地路线见 `TASK.md`。
 
 ## 形态（双形态，软依赖 better-sidebar）
 
@@ -102,13 +102,24 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **回归**：`node test/t04-write-ops.test.mjs`（25 项：纯逻辑 7 + DOM 交互 18，
   含 22 次连续增删改后 yml 始终合法）。
 
-## 运行功能（暂缓，用户决策 2026-08-23）
+## 运行功能（T07，2026-08-23 落地）
 
-**「运行」已整体移除**（TASK.md 调整记录 #21）：v0.1 曾实现「运行」= 把命令写入当前会话
-对话输入框（`conversation` 服务 `setDraft`，回车即让 Agent 执行），用户评估后认为该方案不佳，
-决定**直接去掉**，等有完善的运行方案（如 T07 终端直写三级降级链）再补全。当前命令卡片仅提供
-「复制」；`danger: true` 标记保留（卡片「危险」徽标 + 保存时关键词提示勾选），供未来运行通道
-恢复时做二次确认。
+**主形态（better-sidebar 在场）**：卡片/右键菜单提供「运行」= **每次新开专用终端 Tab** +
+**终端直写**（用户决策，TASK.md 调整记录 #24）：
+
+- **流程**：`bs.openTab({type:'terminal'})` 新开 → snapshot 差集识别新终端 id →
+  `activateTab` 激活 → 短命 WS 附加 `/sidebar/ws/terminal?sessionId&tab&cwd` →
+  **等输出流出现提示符 `>`（PowerShell 冷启动 6–7s，未就绪写入会被吞）** → 发送 `命令+\r` →
+  **保持连接不 drop**（新终端无 UI 视图长连时 bare drop 会在 reconnect grace 30s 后杀 pty）；
+- **危险命令**（`danger: true`）：确认弹窗（命令原文 + 取消/确认）→ 只发文本**不带 `\r`**，
+  停在提示符由用户亲眼确认后回车（双人工确认）；
+- **降级链**（用户确认定稿）：终端直写任一失败（pty 配额满/设置禁用/openTab 被拒/WS 失败）→
+  `bs.closeTab` 回滚刚创建的 tab（防泄漏）→ **复制 + Toast「已复制，到终端粘贴执行」**
+  （不再写对话输入框——该方案已被否决，调整记录 #21）；
+- **降级形态（无 better-sidebar）**：**不渲染运行入口**，只提供复制（用户决策 #24）。
+- **协议实证**：双 WS 附加 13/13（`node test/t07-ws-probe.mjs`，better-sidebar **v0.13.1**）
+  + 端到端写文件副作用验证；每次升级 better-sidebar 后回归（`docs/better-sidebar-接入规范.md` §3）。
+- **回归**：`node test/t07-run.test.mjs`（17 项：纯逻辑/成功路径/危险确认/降级链×4/回滚/UI）。
 
 ## 主形态（T06，better-sidebar Tab）
 
