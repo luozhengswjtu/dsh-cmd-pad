@@ -611,9 +611,9 @@ await check('B11 "/" 聚焦搜索（焦点不在输入框时）', async () => {
   assert.strictEqual(s.searchInput._focused, true)
 })
 
-await check('B12 空态：空库提示', async () => {
+await check('B12 空态：空库提示「等待添加」（发布版文案，调整记录 #27）', async () => {
   const s = await bootScene({ library: { commands: [] }, state: {}, cwd: null })
-  assert.strictEqual(find(s.contentEl, '.cmd-pad-empty').textContent, '还没有命令，可手改 commands.yml 添加')
+  assert.strictEqual(find(s.contentEl, '.cmd-pad-empty').textContent, '等待添加')
   // 无 cwd → 无「项目：」行；上次 slot（current-project）隐藏
   assert.strictEqual(findAttr(s.groupsEl, 'data-view-id', 'current-project'), null)
 })

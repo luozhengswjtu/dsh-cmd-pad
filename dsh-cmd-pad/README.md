@@ -28,7 +28,9 @@ dsh plugin --profile web add <本目录>
   分组 = 常驻/重命名/删除；主形态下卡片「运行」= 新开专用终端直送执行（危险命令先确认、停在提示符
   不回车，见「运行功能」）。
 - **数据与手改**：命令库在 `%USERPROFILE%\.dsh\profiles\web\cmd-pad\commands.yml`（人可手改，
-  重开面板自动生效；写操作自动 `.bak` 备份）；机器状态在 `state.json`。
+  重开面板自动生效；写操作自动 `.bak` 备份）；机器状态在 `state.json`。**插件零预设数据**：
+  安装后为**空库**（空态显示「等待添加」，分组条仅「全部」+ 项目分组——分组为聚合语义，
+  命令删光分组自动消失）；可用顶栏 `+ 添加` 或手改 yml 建立自己的命令库。
 - **升级 better-sidebar 后**：必须回归 `test/t07-ws-probe.mjs` + `test/t07-run.test.mjs`
   （终端 WS 为未文档化内部协议，见 `docs/better-sidebar-接入规范.md` §3）。
 

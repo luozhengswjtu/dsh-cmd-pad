@@ -2257,7 +2257,7 @@ window.__ModuleLoader__.load({
               contentEl.appendChild(sectionEl('未分组', un.length, un, null))
             }
           }
-          if (!any) contentEl.appendChild(emptyEl('还没有命令，可手改 commands.yml 添加'))
+          if (!any) contentEl.appendChild(emptyEl('等待添加'))
           return
         }
         var cmds = commandsForView(commands, activeView, data.cwd)
