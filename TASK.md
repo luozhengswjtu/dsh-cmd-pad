@@ -26,14 +26,20 @@
 
 ## T01 最小骨架可挂载
 
-- **状态**：⬜
+- **状态**：🚧（代码/安装/静态验证完成；运行时目检待重启 `dsh web` 后执行，见完成证据）
 - **前置**：T00
 - **内容**：`package.json`（dsh.bundle.patch + dsh.client 声明、peer 含 dsh-better-sidebar optional）+ `cordis.patch.yml` + 空 host 半（`ctx.webServer.register` 前缀就绪）+ client 半手写 `__ModuleLoader__.load` wire format，仅渲染浮动图标 + 空抽屉（非模态、无蒙层、z-index 30、`data-dsh-cmd-pad` 锚点）。
 - **完成定义**：
-  - [ ] `dsh plugin --profile web add` 安装成功；
-  - [ ] 重启 `dsh web` + 硬刷新后浮动图标出现，抽屉开合正常；
-  - [ ] 控制台零报错；Esc / ✕ / 再点图标三种关闭途径均生效。
-- **风险假设待验证**：手写 wire format 在目标 DSH 版本（≥ 0.1.0-rc.8）可用——**全项目最高风险假设，此步不过则停下来调整 bundle 方案，不硬推**。
+  - [x] `dsh plugin --profile web add` 安装成功（`dsh.profile.bundles` 协调 + `node_modules/dsh-cmd-pad` junction 确认）；
+  - [ ] 重启 `dsh web` + 硬刷新后浮动图标出现，抽屉开合正常（**待运行时验证**——需要重启当前 GUI 宿主，见完成证据备注）；
+  - [ ] 控制台零报错；Esc / ✕ / 再点图标三种关闭途径均生效（**待运行时验证**）。
+- **完成证据**（截至 `dsh-cmd-pad/` 初版提交）：
+  - wire format 静态实证：`node` 模拟 `__ModuleLoader__.load` 全流程——id=`dsh-cmd-pad`、factory 导出 `apply`、`ctx.effect` 返回 disposer 且 dispose 幂等，全部通过；
+  - host 半 ESM 冒烟：`name`/`inject:['webServer']`/`apply` 导出正常；`cordis.patch.yml` 经 js-yaml 解析为 `[{insert:[{id:'cmd-pad',name:'dsh-cmd-pad'}]}]`；
+  - 安装协调：profile `package.json` 的 `dependencies` 增 `dsh-cmd-pad: link:`，`dsh.profile.bundles` 追加 `dsh-cmd-pad`；
+  - client bundle 路由 `/plugins/dsh-cmd-pad/client.js` 当前返回 404——因运行中实例是安装前启动的，重启后应恢复 200（预期行为）。
+- **风险假设结论**：手写 wire format 在目标 DSH 版本可用性——对照 `dsh-client-modules` 源码（`graphRow`/`arrive`/`materialize` 全链路）与官方 bundle 产物逐条核对 + 本包模拟执行**均通过**，风险大幅下降；仍待重启后真机页面确认（运行时验证未完成前不标 ✅）。
+- **备注**：~~若 v0.1 代码已存在于别处~~ 与 T00 一致（无 v0.1 代码，从零开始）；分工边界见调整记录 #3（本会话为执行会话）。
 
 ## T02 host 半数据层
 
@@ -126,6 +132,7 @@
 |---|---|---|---|
 | 2026-08-23 | T00 | #1 用户确认无 v0.1 代码，项目从零开始（设计文档头注「v0.1 代码已落地」为超前描述） | T00 保持纯文档基线；T01 起按完整范围执行，无代码校准工作 |
 | 2026-08-23 | 全部 | #2 用户明确分工：**本对话（协调会话）不修改代码**，只维护文档/规范/任务账本；代码实现由其他对话（执行会话）完成 | 执行会话开工前读 AGENTS.md 硬规则与本文件前置状态；实现完成后由协调会话按执行会话的验证反馈更新状态与完成证据、维护调整记录 |
+| 2026-08-23 | T01 | #3 用户在本次会话明确选择「由 AI 直接实现 T01」（覆盖 #2 对本对话的协调角色限定）；AGENTS.md 已同步为「执行会话写代码、协调会话只维护账本」双会话分工 | 本会话按执行会话角色完成 `dsh-cmd-pad/` 初版（package.json / cordis.patch.yml / host 半 / client 半 / README）+ `dsh plugin --profile web add` 安装 + 静态验证；T01 标 🚧（运行时目检需重启 `dsh web` 当前 GUI 宿主，重启补验后转 ✅） |
 
 ## 已知风险登记（开工即知，随任务推进复核）
 

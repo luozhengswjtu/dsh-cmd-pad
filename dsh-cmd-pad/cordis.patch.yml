@@ -1,0 +1,16 @@
+# dsh-cmd-pad bundle patch
+#
+# `dsh.bundle.patch` 层：`dsh plugin --profile <name> add <cmd-pad 目录>` 安装后，
+# CLI 将本包追加进 `dsh.profile.bundles`，profile boot 合并本 patch 的 insert 行，
+# 把 host 半挂载进 cordis loader（id: cmd-pad / name: dsh-cmd-pad）。
+#
+# 挂载行约定（与 better-sidebar 的 cordis.patch.yml 同构）：
+#   - id    cordis entry id（profile 内唯一）
+#   - name  包名（loader 按此解析包入口）
+#
+# 注意：host 半与 client 半是两个独立通道——本 insert 只挂 host 半；
+# client 半由 `dsh.client` 声明 + `exports["./client"]` 被发现并 serve 到
+# /plugins/dsh-cmd-pad/client.js（client-modules 服务），两路缺一不可。
+- insert:
+    - id: cmd-pad
+      name: 'dsh-cmd-pad'

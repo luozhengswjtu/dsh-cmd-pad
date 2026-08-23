@@ -1,0 +1,38 @@
+{
+  "name": "dsh-cmd-pad",
+  "version": "0.1.0",
+  "description": "DSH web plugin: 测试命令行速查面板（命令按分组+项目归档，一键复制/运行）。软依赖 better-sidebar：装了走侧边栏 Tab（主形态），没装走浮动图标 + 非模态抽屉（降级形态）",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "cordis": "^4.0.0-rc.8",
+    "dsh-better-sidebar": ">=0.12.0"
+  },
+  "peerDependenciesMeta": {
+    "dsh-better-sidebar": {
+      "optional": true
+    }
+  },
+  "license": "MIT"
+}
