@@ -812,11 +812,11 @@ await check('C3 类名全带 cmd-pad- 前缀（CSS 选择器 + className 赋值�
   assert.ok(!CLIENT_SRC.includes('nArs4W'), '不引用 better-sidebar 哈希类名')
 })
 
-await check('C4 仅 3 处单色 SVG（浮动图标 + 搜索放大镜 + 上次使用范围帮助 ⓘ）；innerHTML 仅用于静态 SVG', async () => {
+await check('C4 仅 2 处单色 SVG（浮动图标 + 上次使用范围帮助 ⓘ；搜索放大镜已移除，调整记录 #34）；innerHTML 仅用于静态 SVG', async () => {
   const svgCount = (CLIENT_SRC.match(/<svg/g) || []).length
-  assert.strictEqual(svgCount, 3, 'SVG 数量应为 3，实际 ' + svgCount)
+  assert.strictEqual(svgCount, 2, 'SVG 数量应为 2，实际 ' + svgCount)
   const innerHtmlAssigns = (CLIENT_SRC.match(/\.innerHTML\s*=/g) || []).length
-  assert.strictEqual(innerHtmlAssigns, 3, 'innerHTML 仅用于 FAB_SVG / SEARCH_SVG / HELP_SVG 三处静态 SVG')
+  assert.strictEqual(innerHtmlAssigns, 2, 'innerHTML 仅用于 FAB_SVG / HELP_SVG 两处静态 SVG')
 })
 
 await check('C5 z-index 层级：抽屉 30、Toast 90（视觉规范 §4.3）', async () => {
@@ -839,11 +839,11 @@ await check('C7 布局结构：搜索 → 分组横条 → 命令区（上下结
   assert.ok(groupsBlock.includes('flex-wrap:wrap'), '分组区横向换行排列')
   const contentBlock = /\.cmd-pad-content\{([^}]*)\}/.exec(css)[1]
   assert.ok(contentBlock.includes('flex:1'), '命令区占满剩余高度')
-  // DOM 结构：search → groups → addcmd → content（上下；调整记录 #33：分组条下方为「添加命令」长条按钮）
+  // DOM 结构：search → groups → content（上下；「添加命令」按钮在搜索行内、新建分组 ＋ 在分组条内，调整记录 #33/#34）
   const s = await bootScene({})
   const body = s.drawer.children.find((c) => c.className === 'cmd-pad-drawer-body')
   const classes = body.children.map((c) => c.className)
-  assert.deepStrictEqual(classes, ['cmd-pad-search', 'cmd-pad-groups', 'cmd-pad-addcmd', 'cmd-pad-content'], '搜索栏→分组区→添加命令→命令区')
+  assert.deepStrictEqual(classes, ['cmd-pad-search', 'cmd-pad-groups', 'cmd-pad-content'], '搜索栏→分组区→命令区')
   // 分组区不占用内容宽度（无左侧竖栏）
   assert.ok(!CLIENT_SRC.includes('cmd-pad-layout'), '不再有 layout 左右分栏容器')
 })

@@ -21,7 +21,8 @@
  * 探测分流（AGENTS.md 硬规则 1：绝不把 'betterSidebar' 写进硬 inject）。
  *
  * 零硬编码颜色：全量 --dsw-alias-* 令牌 + --cp-* 兜底链（视觉规范 §1/§2/§3）。
- * 仅 2 处单色 SVG（浮动图标 / 搜索放大镜），currentColor 16viewBox 1.5px stroke。
+ * 仅 2 处单色 SVG（浮动图标 / 上次使用范围帮助 ⓘ；搜索放大镜已按用户反馈移除，调整记录 #34），
+ * currentColor 16viewBox 1.5px stroke。
  * 渲染一律 createElement + textContent（不拼用户内容进 innerHTML，防 XSS）。
  */
 window.__ModuleLoader__.load({
@@ -222,10 +223,6 @@ window.__ModuleLoader__.load({
       '  border-bottom:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
       '  -webkit-app-region:no-drag;',
       '}',
-      '.cmd-pad-search svg{',
-      '  flex:none;',
-      '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
-      '}',
       // 输入框 + 内部 ✕ 的组合容器：✕ 以 absolute 悬在输入框内部右侧（调整记录 #31）
       '.cmd-pad-search-field{',
       '  flex:1;',
@@ -245,8 +242,8 @@ window.__ModuleLoader__.load({
       '  font-size:12px;',
       '  padding:5px 28px 5px 8px;', // 右侧留出内部 ✕ 的空间（调整记录 #31）
       '  border-radius:6px;',
-      // 中性黑浅投影：让搜索框在行内略微浮起、更显眼（调整记录 #30，用户反馈「不够显眼，加一层小小的阴影，不要重」）
-      '  box-shadow:0 1px 3px rgba(0,0,0,.15);',
+      // 中性黑浅投影：让搜索框在行内略微浮起、更显眼（调整记录 #30 加 .15 → #34 用户要求再淡 → .10）
+      '  box-shadow:0 1px 3px rgba(0,0,0,.10);',
       '  -webkit-app-region:no-drag;',
       '}',
       '.cmd-pad-search-input::placeholder{',
@@ -375,8 +372,8 @@ window.__ModuleLoader__.load({
       '  border-radius:8px;',
       '  padding:8px;',
       '  margin-bottom:8px;',
-      // 与搜索框同款中性黑浅投影（调整记录 #30：命令内容框同样加一层小阴影，浮起感、不重）
-      '  box-shadow:0 1px 3px rgba(0,0,0,.15);',
+      // 与搜索框同款中性黑浅投影（调整记录 #30 加 .15 → #34 用户要求再淡 → .10）
+      '  box-shadow:0 1px 3px rgba(0,0,0,.10);',
       '}',
       '.cmd-pad-card:hover{',
       '  border-color:var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
@@ -423,8 +420,8 @@ window.__ModuleLoader__.load({
       '  -webkit-line-clamp:2;',
       '  -webkit-box-orient:vertical;',
       '  overflow:hidden;',
-      // 中性黑浅投影，比卡片本体（.15）更淡（调整记录 #32：命令内容框内的命令行代码块同样加一层，淡一点）
-      '  box-shadow:0 1px 3px rgba(0,0,0,.08);',
+      // 中性黑浅投影，比卡片本体更淡（调整记录 #32 加 .08 → #34 用户要求再淡 → .05）
+      '  box-shadow:0 1px 3px rgba(0,0,0,.05);',
       '}',
       '.cmd-pad-card-cmd:hover{',
       '  border-color:var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
@@ -503,20 +500,19 @@ window.__ModuleLoader__.load({
       '.cmd-pad-toast[data-kind="error"]{',
       '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
       '}',
-      // ── T04→#33：「添加命令」长条按钮（分组条下方，全宽；解耦自「+ 添加」，调整记录 #33）──
+      // ── T04→#33/#34：「添加命令」按钮（搜索框右侧；#34 用户定稿：放搜索框右侧并与搜索框右侧末尾保持距离）──
       '.cmd-pad-addcmd{',
       '  flex:none;',
-      '  display:flex;',
-      '  align-items:center;',
-      '  justify-content:center;',
-      '  margin:6px 10px 0;',
-      '  padding:6px 8px;',
+      '  margin-left:14px;', // 与搜索框右侧末尾的距离（叠加容器 6px gap = 总间距 20px；#34 用户要求保持距离）
       '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
       '  background:transparent;',
       '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
       '  font-size:12px;',
+      '  line-height:1;',
+      '  padding:6px 10px;',
       '  border-radius:6px;',
       '  cursor:pointer;',
+      '  white-space:nowrap;',
       '  -webkit-app-region:no-drag;',
       '}',
       '.cmd-pad-addcmd:hover{',
@@ -1242,16 +1238,6 @@ window.__ModuleLoader__.load({
       '</svg>',
     ].join('')
 
-    // 搜索放大镜（视觉规范 §3.2：16 viewBox / 1.5px stroke / currentColor / round）
-    var SEARCH_SVG = [
-      '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"',
-      '     stroke="currentColor" stroke-width="1.5"',
-      '     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
-      '  <circle cx="7" cy="7" r="4.5"/>',
-      '  <path d="m10.5 10.5 3 3"/>',
-      '</svg>',
-    ].join('')
-
     // 「上次使用」视图范围帮助图标 ⓘ（用户定稿 2026-08-2x：小圆形 + 空心问号；
     // 视觉规范 §3.2 同款规格：16 viewBox / 1.5px stroke / currentColor / round caps）
     var HELP_SVG = [
@@ -1314,13 +1300,10 @@ window.__ModuleLoader__.load({
      * 返回 { body, searchInput, searchCount, groupsEl, contentEl, clearBtn }。
      */
     function createPanelBody(bodyClass) {
-      // 搜索栏（T03）：放大镜 + 输入框（清空 ✕ 悬在输入框内部右侧，调整记录 #31）+ 计数
+      // 搜索栏（T03）：输入框（清空 ✕ 悬在输入框内部右侧，调整记录 #31）+ 计数 + 添加命令。
+      // 调整记录 #34：移除搜索框左侧放大镜图标；「添加命令」放搜索框右侧并保持距离。
       var search = document.createElement('div')
       search.className = 'cmd-pad-search'
-
-      var searchIcon = document.createElement('span')
-      searchIcon.innerHTML = SEARCH_SVG
-      search.appendChild(searchIcon)
 
       // 输入框 + 内部右侧清空 ✕ 的组合（field 为 ✕ 的定位上下文）
       var field = document.createElement('div')
@@ -1347,17 +1330,18 @@ window.__ModuleLoader__.load({
       searchCount.className = 'cmd-pad-search-count'
       search.appendChild(searchCount)
 
-      // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构；调整记录 #33：分组条下方新增「添加命令」长条按钮）
-      var groupsEl = document.createElement('div')
-      groupsEl.className = 'cmd-pad-groups'
-
-      // 添加命令长条按钮（调整记录 #33：解耦「添加命令」与「添加分组」，独立全宽入口）
+      // 添加命令按钮（调整记录 #34：搜索框右侧，与搜索框右侧末尾保持距离）
       var addCmdBtn = document.createElement('button')
       addCmdBtn.type = 'button'
       addCmdBtn.className = 'cmd-pad-addcmd'
       addCmdBtn.textContent = '添加命令'
       addCmdBtn.title = '添加命令'
       addCmdBtn.setAttribute('aria-label', '添加命令')
+      search.appendChild(addCmdBtn)
+
+      // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）
+      var groupsEl = document.createElement('div')
+      groupsEl.className = 'cmd-pad-groups'
 
       // 添加分组 ＋（调整记录 #33：分组栏右侧，独立建组入口；空组自动常驻才可见）
       var groupAddBtn = document.createElement('button')
@@ -1374,7 +1358,6 @@ window.__ModuleLoader__.load({
       body.className = bodyClass || 'cmd-pad-drawer-body'
       body.appendChild(search)
       body.appendChild(groupsEl)
-      body.appendChild(addCmdBtn)
       body.appendChild(contentEl)
 
       return { body: body, searchInput: searchInput, searchCount: searchCount, groupsEl: groupsEl, contentEl: contentEl, clearBtn: searchClear, addCmdBtn: addCmdBtn, groupAddBtn: groupAddBtn }

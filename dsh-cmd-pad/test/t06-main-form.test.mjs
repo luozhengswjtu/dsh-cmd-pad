@@ -467,10 +467,11 @@ await check('N1 组件挂载：ref 挂纯 DOM 面板，内容区渲染（搜索/
   assert.ok(find(host, '.cmd-pad-groups') !== null, '分组条在场')
   const ids = cardIds(host)
   assert.deepStrictEqual(ids, ['top-mem'], '初始视图 = 上次使用分组 perf → 仅 top-mem')
-  // 内容区与抽屉同款：添加命令 = 分组条下方长条按钮；新建分组 = 分组条内 ＋（调整记录 #33）
+  // 内容区与抽屉同款：添加命令 = 搜索行内按钮（搜索框右侧）；新建分组 = 分组条内 ＋（调整记录 #33/#34）
   const addCmdBtn = find(host, '.cmd-pad-addcmd')
   assert.ok(addCmdBtn !== null, '主形态添加命令按钮存在')
   assert.strictEqual(addCmdBtn.textContent, '添加命令')
+  assert.ok(find(host, '.cmd-pad-search').children.includes(addCmdBtn), '「添加命令」位于搜索行内')
   assert.ok(find(host, '.cmd-pad-group-add') !== null, '主形态 ＋ 新建分组按钮存在')
   assert.ok(find(host, '.cmd-pad-groups').children.includes(find(host, '.cmd-pad-group-add')), '＋ 位于分组条内')
   // 复制交互可用（内容区等价）

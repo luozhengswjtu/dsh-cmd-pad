@@ -34,9 +34,9 @@
    > `test/t07-ws-probe.mjs` + `test/t07-run.test.mjs` 回归（接入规范 §3）。
 6. **零构建纯 DOM**：client 半为手写 `__ModuleLoader__.load({ id: 'dsh-cmd-pad', factory })` wire format；
    react 可 `require('react')`（白名单）；**禁止** value-import/require `dsh-better-sidebar` 的任何模块。
-7. **视觉**：零硬编码颜色，全量 `--dsw-alias-*` 令牌 + 兜底链；无 emoji、无彩色图标（全插件仅 3 处
-   单色 SVG：Tab 图标、搜索放大镜、上次使用范围帮助 ⓘ——16 viewBox / 1.5px stroke / currentColor /
-   round caps，调整记录 #28）；按钮纯文字（范围切换「项目/全部」为纯文字二选一）；类名加
+7. **视觉**：零硬编码颜色，全量 `--dsw-alias-*` 令牌 + 兜底链；无 emoji、无彩色图标（全插件仅 2 处
+   单色 SVG：Tab 图标、上次使用范围帮助 ⓘ——16 viewBox / 1.5px stroke / currentColor /
+   round caps，调整记录 #28/#34：搜索框放大镜已按用户反馈移除）；按钮纯文字（范围切换「项目/全部」为纯文字二选一）；类名加
    `cmd-pad-` 前缀；不引用 better-sidebar 的 CSS Modules 哈希类名；z-index：抽屉 30、弹层 90。
 8. **数据**：命令库 = 人可手改的 `commands.yml`（分组名即主键）；机器状态 = `state.json`；写入原子化
    （临时文件 + rename，yml 写前 `.bak`）；存储目录 `%USERPROFILE%\.dsh\profiles\web\cmd-pad\`。

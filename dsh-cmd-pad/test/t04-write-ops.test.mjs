@@ -489,19 +489,20 @@ await check('D7 togglePinned：加入/移除/顺序保持', async () => {
 // E. DOM 渲染与交互
 // ════════════════════════════════════════════════════════════════════════
 
-await check('E1 添加命令入口 = 分组条下方长条按钮；新建分组 = 分组栏右侧 ＋（调整记录 #33）', async () => {
+await check('E1 添加命令入口 = 搜索框右侧按钮；新建分组 = 分组栏右侧 ＋（调整记录 #33/#34）', async () => {
   const s = await bootScene({})
-  assert.ok(s.addCmdBtn !== null, '应有「添加命令」长条按钮')
+  assert.ok(s.addCmdBtn !== null, '应有「添加命令」按钮')
   assert.strictEqual(s.addCmdBtn.textContent, '添加命令')
   assert.ok(s.groupAddBtn !== null, '应有「＋」新建分组按钮')
   assert.strictEqual(s.groupAddBtn.textContent, '+')
-  // 长条按钮位于分组条与命令区之间；旧搜索行/顶栏「+ 添加」已移除
-  const body = s.drawer.children.find((c) => c.className === 'cmd-pad-drawer-body')
-  const classes = body.children.map((c) => c.className)
-  assert.deepStrictEqual(classes, ['cmd-pad-search', 'cmd-pad-groups', 'cmd-pad-addcmd', 'cmd-pad-content'], '搜索 → 分组条 → 添加命令 → 命令区')
-  assert.strictEqual(find(s.body, '.cmd-pad-add'), null, '不再有旧「+ 添加」按钮')
-  // ＋ 挂在分组条内（右侧）
+  // 「添加命令」位于搜索行内（搜索框右侧）；＋ 位于分组条内
+  const searchRow = find(s.drawer, '.cmd-pad-search')
+  assert.ok(searchRow !== null, '搜索行在场')
+  assert.ok(searchRow.children.includes(s.addCmdBtn), '「添加命令」位于搜索行（搜索框右侧）')
   assert.ok(s.groupsEl.children.includes(s.groupAddBtn), '＋ 位于分组条内')
+  // 搜索框左侧不再有放大镜图标（调整记录 #34）
+  assert.strictEqual(collect(searchRow, 'svg', []).length, 0, '搜索行内无 SVG 图标')
+  assert.strictEqual(find(s.body, '.cmd-pad-add'), null, '不再有旧「+ 添加」按钮')
 })
 
 await check('E2 分组视图点 + 添加 → 表单弹窗，默认勾选当前分组（含不常驻）', async () => {
