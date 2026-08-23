@@ -501,6 +501,7 @@ await check('E2 分组视图点 + 添加 → 表单弹窗，默认勾选当前�
 
 await check('E3 全部视图点添加 → 默认勾选上次使用的分组', async () => {
   const s = await bootScene({})
+  clickGroup(s, 'all') // 切到全部视图语境（§3.5：全部/搜索态默认勾选 上次使用 → 当前项目 → 常用）
   openAdd(s)
   const modal = modalEl(s)
   const checked = findAllAttr(modal, 'data-checked', 'true', [])
@@ -731,8 +732,10 @@ await check('E15 连续 20+ 次增删改 → yml 始终合法、分组聚合正�
 })
 
 await check('E16 手改 yml 重开自动生效（每次打开拉取）', async () => {
-  const s = await bootScene({})
-  assert.ok(cardIds(s).includes('top-mem'))
+  const state = { pinnedGroups: [], lastUsedViewId: 'group:common', viewLastUsedAt: {} }
+  const s = await bootScene({ state })
+  // 初始视图 = 上次使用的 common 分组（top-mem / proj-build 属于 common）
+  assert.deepStrictEqual(cardIds(s), ['top-mem', 'proj-build'])
   // 模拟外部手改：payloadRef 指向新数据
   s.payloadRef.library = { commands: [{ id: 'external', title: '外部新增', cmd: 'x', groups: ['common'] }] }
   // 关闭再打开
@@ -741,7 +744,7 @@ await check('E16 手改 yml 重开自动生效（每次打开拉取）', async (
   s.fab.listeners.click.forEach((fn) => fn()) // reopen
   await tick()
   const ids = cardIds(s)
-  assert.deepStrictEqual(ids, ['external'], '重开拉取最新命令库')
+  assert.deepStrictEqual(ids, ['external'], '重开拉取最新命令库（初始视图仍为 common）')
 })
 
 await check('E17 Esc 链：弹窗开 → Esc 关弹窗（不动抽屉）', async () => {

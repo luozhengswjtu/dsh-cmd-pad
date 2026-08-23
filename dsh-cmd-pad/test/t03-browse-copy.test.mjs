@@ -476,26 +476,26 @@ await check('B1 打开抽屉 → fetch /cmd-pad/api/library 一次，带 session
   assert.strictEqual(s.drawer.getAttribute('data-open'), 'true')
 })
 
-await check('B2 侧栏结构：上次 slot / 全部 / 项目： / 常驻分组 / ▸更多', async () => {
+await check('B2 侧栏结构：全部 / 项目： / 常驻分组 / ▸更多（无「上次使用」标签，调整记录 #17）', async () => {
   const s = await bootScene({})
   const rows = groupRowTexts(s)
   assert.deepStrictEqual(rows, ['全部', '项目：car_media', 'common', 'perf'])
-  const slot = find(s.groupsEl, '.cmd-pad-last-slot')
-  assert.ok(slot !== null, '应有上次使用 slot')
-  assert.strictEqual(slot.textContent, '上次：perf')
+  assert.strictEqual(find(s.groupsEl, '.cmd-pad-last-slot'), null, '不应有上次使用 slot 标签')
   const more = find(s.groupsEl, '.cmd-pad-more-toggle')
   assert.ok(more !== null, '应有 ▸更多')
   assert.strictEqual(more.textContent, '▸ 更多（3）')
-  // 默认视图 = 全部
-  assert.ok(findAttr(s.groupsEl, 'data-view-id', 'all').getAttribute('data-active') === 'true')
+  // 打开抽屉初始视图 = 上次使用的分组（lastUsedViewId=group:perf 有效）→ 内容区显示 perf 命令
+  assert.deepStrictEqual(cardIds(s), ['top-mem'])
+  assert.ok(findAttr(s.groupsEl, 'data-view-id', 'group:perf').getAttribute('data-active') === 'true')
 })
 
 await check('B3 更多展开 → 其他项目（消歧名 + 最近使用倒序）与分组小节', async () => {
   const s = await bootScene({})
+  clickGroup(s, 'all') // 先切到全部，避免初始视图干扰
   const more = find(s.groupsEl, '.cmd-pad-more-toggle')
   s.groupsEl.listeners.click.forEach((fn) => fn({ target: more }))
   const rows = groupRowTexts(s)
-  // 顶层行不变
+  // 顶层行
   assert.deepStrictEqual(rows.slice(0, 4), ['全部', '项目：car_media', 'common', 'perf'])
   // 小节标题
   const sections = collect(s.groupsEl, '.cmd-pad-more-section', []).map((x) => x.textContent)
@@ -519,6 +519,7 @@ await check('B4 视图切换：点「项目：car_media」→ 只显示该项目
 
 await check('B5 全部视图分节：节标题 + 计数（当前项目 → 其他项目 → 常驻 → 不常驻）', async () => {
   const s = await bootScene({})
+  clickGroup(s, 'all')
   const titles = collect(s.contentEl, '.cmd-pad-section-title', []).map((t) => t.textContent)
   assert.deepStrictEqual(titles, ['car_media2', 'docs / Temp_Code1', 'other / Temp_Code1', 'common3', 'perf1', 'logs1'])
   // 未分组节不存在（无未分组命令）
@@ -527,20 +528,24 @@ await check('B5 全部视图分节：节标题 + 计数（当前项目 → 其�
 
 await check('B6 一键复制：命令原样进剪贴板（含多行 &&）+ Toast + 上次使用刷新', async () => {
   const s = await bootScene({})
+  clickGroup(s, 'group:common') // multi-line 在 common 分组
   clickCardButton(s, 'multi-line')
   await tick()
   assert.deepStrictEqual(s.clipboardTexts, ['git add . && git commit -m "x"\ngit push'])
   const toast = find(s.body, '.cmd-pad-toast')
   assert.strictEqual(toast.getAttribute('data-show'), 'true')
   assert.strictEqual(toast.textContent, '已复制')
-  // 上次使用刷新：全部视图复制 → 指向命令第一个分组 group:common；PUT /api/state 已发
+  // 上次使用刷新：common 视图复制 → lastUsedViewId=group:common；PUT /api/state 已发
   assert.strictEqual(s.statePuts.length, 1)
   assert.strictEqual(s.statePuts[0].lastUsedViewId, 'group:common')
   assert.ok(typeof s.statePuts[0].viewLastUsedAt['group:common'] === 'number')
-  // slot 即时更新：data.state.lastUsedViewId 已同步（重渲染后 slot 显示 上次：common）
-  const slot = find(s.groupsEl, '.cmd-pad-last-slot')
-  assert.ok(slot !== null, '复制后应有上次使用 slot')
-  assert.strictEqual(slot.textContent, '上次：common')
+  // 重开抽屉 → 初始视图直接定位到 group:common（无「上次」标签，调整记录 #17）
+  s.fab.listeners.click.forEach((fn) => fn()) // close
+  await tick()
+  s.fab.listeners.click.forEach((fn) => fn()) // reopen
+  await tick()
+  assert.deepStrictEqual(cardIds(s), ['top-mem', 'proj-build', 'multi-line'], '重开直接显示 common 分组')
+  assert.ok(findAttr(s.groupsEl, 'data-view-id', 'group:common').getAttribute('data-active') === 'true')
 })
 
 await check('B7 命令块点击复制：原样 + 危险命令也复制', async () => {
@@ -580,6 +585,7 @@ await check('B9 搜索：命中过滤 + 计数 + 高亮 + 分组名命中', asyn
 
 await check('B10 Esc 清空搜索 → 恢复视图；搜索态下再 Esc → 关闭抽屉', async () => {
   const s = await bootScene({})
+  clickGroup(s, 'all') // 切到全部再测搜索
   typeSearch(s, 'rm')
   pressEsc(s)
   assert.strictEqual(s.searchInput.value, '')
@@ -603,9 +609,10 @@ await check('B12 空态：空库提示', async () => {
   assert.strictEqual(findAttr(s.groupsEl, 'data-view-id', 'current-project'), null)
 })
 
-await check('B13 上次 slot 失效隐藏（指向分组已删除）', async () => {
+await check('B13 lastUsed 指向已删分组 → 打开初始视图回退「全部」', async () => {
   const s = await bootScene({ state: { pinnedGroups: [], lastUsedViewId: 'group:gone', viewLastUsedAt: {} } })
-  assert.strictEqual(find(s.groupsEl, '.cmd-pad-last-slot'), null)
+  assert.deepStrictEqual(cardIds(s).length > 0, true, '回退到全部视图有内容')
+  assert.ok(findAttr(s.groupsEl, 'data-view-id', 'all').getAttribute('data-active') === 'true', '全部行激活')
 })
 
 await check('B14 分组视图空态：常驻分组无命令', async () => {

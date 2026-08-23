@@ -241,28 +241,6 @@ window.__ModuleLoader__.load({
       '  font-size:10px;',
       '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
       '}',
-      // 「上次使用」slot：虚线框 chip
-      '.cmd-pad-last-slot{',
-      '  display:inline-flex;',
-      '  align-items:center;',
-      '  padding:3px 8px;',
-      '  border:1px dashed var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
-      '  border-radius:6px;',
-      '  cursor:pointer;',
-      '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
-      '  font-size:12px;',
-      '  line-height:1.4;',
-      '  max-width:180px;',
-      '  overflow:hidden;',
-      '  text-overflow:ellipsis;',
-      '  white-space:nowrap;',
-      '  user-select:none;',
-      '  -webkit-app-region:no-drag;',
-      '}',
-      '.cmd-pad-last-slot:hover{',
-      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
-      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
-      '}',
       '.cmd-pad-more-toggle{',
       '  display:inline-flex;',
       '  align-items:center;',
@@ -1252,16 +1230,6 @@ window.__ModuleLoader__.load({
       return row
     }
 
-    function lastSlot(model, activeView) {
-      var lu = model.lastUsed
-      if (lu === null) return null
-      var row = el('div', 'cmd-pad-last-slot')
-      row.setAttribute('data-view-id', lu.id)
-      if (activeView === lu.id) row.setAttribute('data-active', 'true')
-      row.textContent = lu.label
-      return row
-    }
-
     function moreToggle(count, expanded) {
       var btn = el('button', 'cmd-pad-more-toggle')
       btn.type = 'button'
@@ -1857,6 +1825,7 @@ window.__ModuleLoader__.load({
         var toast = createToast(root)
         var overlay = null            // 弹窗遮罩（表单/确认）
         var undoState = null          // { snapshot, timer } 删除撤销（5s）
+        var pendingInitialView = false // 打开抽屉时待定的初始视图（上次使用分组）
 
         function findCommand(cmdId) {
           if (data === null || !Array.isArray(data.library.commands)) return null
@@ -1936,8 +1905,7 @@ window.__ModuleLoader__.load({
           clearEl(groupsEl)
           if (data === null) return
           var model = currentModel()
-          var lu = lastSlot(model, activeView)
-          if (lu !== null) groupsEl.appendChild(lu)
+          // 用户定稿（调整记录 #17）：不显示「上次使用」slot 标签，打开抽屉直接定位该视图
           groupsEl.appendChild(groupRow(null, '全部', null, 'all', activeView === 'all'))
           if (model.cwd) {
             var cwdDisplay = model.displayNames[model.cwd] || pathBase(model.cwd)
@@ -2000,7 +1968,11 @@ window.__ModuleLoader__.load({
             }
             loadState('ready')
             var model = currentModel()
-            if (!isValidView(activeView, model)) {
+            if (pendingInitialView) {
+              // 打开抽屉：初始视图 = 上次使用的分组（§3.4 语义），失效回退「全部」
+              pendingInitialView = false
+              activeView = (model.lastUsed !== null && isValidView(model.lastUsed.id, model)) ? model.lastUsed.id : 'all'
+            } else if (!isValidView(activeView, model)) {
               activeView = model.lastUsed !== null ? model.lastUsed.id : 'all'
             }
             renderAll()
@@ -2417,6 +2389,7 @@ window.__ModuleLoader__.load({
           applyClusterOffset(drawer)
           pushLayoutForDrawer(drawer, true)
           window.addEventListener('resize', onResize)
+          pendingInitialView = true // 打开即定位到上次使用的分组（调整记录 #17）
           refreshData() // 每次打开拉取最新（设计文档 §5.3 多标签页/手改 yml 保鲜）
         }
 
