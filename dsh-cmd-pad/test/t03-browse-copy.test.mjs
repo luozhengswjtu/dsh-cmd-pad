@@ -535,6 +535,9 @@ await check('B6 一键复制：命令原样进剪贴板（含多行 &&）+ Toast
   const toast = find(s.body, '.cmd-pad-toast')
   assert.strictEqual(toast.getAttribute('data-show'), 'true')
   assert.strictEqual(toast.textContent, '已复制')
+  // Toast 锚定到复制按钮左侧（用户定稿）：inline left 被设置、right 为 auto
+  assert.ok(typeof toast.style.left === 'string' && toast.style.left.endsWith('px'), 'toast 定位到按钮左侧: ' + toast.style.left)
+  assert.strictEqual(toast.style.right, 'auto')
   // 上次使用刷新：common 视图复制 → lastUsedViewId=group:common；PUT /api/state 已发
   assert.strictEqual(s.statePuts.length, 1)
   assert.strictEqual(s.statePuts[0].lastUsedViewId, 'group:common')

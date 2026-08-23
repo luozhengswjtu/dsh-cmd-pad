@@ -1590,8 +1590,8 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * Toast（z-index 90）：单条复用，新消息替换旧的；2s 自动隐藏；
-     * T04 起支持操作按钮（如删除后的「撤销」）。
+     * Toast：默认右下角；传入 anchor 时定位到该元素**左侧**（垂直居中，视口内 clamp，
+     * 左侧放不下时改放右侧）。单条复用，4s 自动隐藏；支持操作按钮（如「撤销」）。
      */
     function createToast(root) {
       var toast = el('div', 'cmd-pad-toast')
@@ -1610,7 +1610,30 @@ window.__ModuleLoader__.load({
         toast.removeAttribute('data-show')
         fn()
       })
-      return function showToast(message, kind, actionLabel, onAction) {
+      function positionByAnchor(anchor) {
+        var st = toast.style
+        if (anchor === null || anchor === undefined || typeof anchor.getBoundingClientRect !== 'function') {
+          // 默认：右下角（浮动图标上方）
+          st.removeProperty('left')
+          st.removeProperty('top')
+          st.right = '16px'
+          st.bottom = '64px'
+          return
+        }
+        var r = anchor.getBoundingClientRect()
+        var w = toast.offsetWidth || 160
+        var h = toast.offsetHeight || 30
+        var left = r.left - w - 8
+        if (left < 8) left = r.right + 8 // 左侧放不下 → 放右侧
+        var top = r.top + (r.height / 2) - (h / 2)
+        if (top < 8) top = 8
+        if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8
+        st.left = left + 'px'
+        st.top = top + 'px'
+        st.right = 'auto'
+        st.bottom = 'auto'
+      }
+      return function showToast(message, kind, actionLabel, onAction, anchor) {
         msg.textContent = message
         if (typeof actionLabel === 'string' && typeof onAction === 'function') {
           actionBtn.textContent = actionLabel
@@ -1623,6 +1646,7 @@ window.__ModuleLoader__.load({
         }
         if (kind === 'error') toast.setAttribute('data-kind', 'error')
         else toast.removeAttribute('data-kind')
+        positionByAnchor(anchor)
         toast.setAttribute('data-show', 'true')
         if (timer !== null) clearTimeout(timer)
         timer = setTimeout(function () {
@@ -2008,7 +2032,7 @@ window.__ModuleLoader__.load({
           } catch (error) { /* 忽略 */ }
         }
 
-        function onCopyCommand(cmdId) {
+        function onCopyCommand(cmdId, anchorEl) {
           if (cmdId === null) return
           var cmd = findCommand(cmdId)
           if (cmd === null || typeof cmd.cmd !== 'string') return
@@ -2021,10 +2045,10 @@ window.__ModuleLoader__.load({
           }
           copyText(cmd.cmd, function (ok) {
             if (!ok) {
-              toast('复制失败', 'error')
+              toast('复制失败', 'error', null, null, anchorEl)
               return
             }
-            toast('已复制')
+            toast('已复制', null, null, null, anchorEl)
             // 刷新「上次使用」slot（功能文档 §3.4）：本地即时 + 远端持久化
             data.state.lastUsedViewId = viewId
             if (data.state.viewLastUsedAt === null || typeof data.state.viewLastUsedAt !== 'object') data.state.viewLastUsedAt = {}
@@ -2351,7 +2375,8 @@ window.__ModuleLoader__.load({
           var copyEl = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-copy-cmd') !== null })
           if (copyEl !== null) {
             var card = closestUp(copyEl, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
-            onCopyCommand(card !== null ? card.getAttribute('data-cmd-id') : null)
+            // Toast 锚定到复制按钮/命令块左侧（用户定稿）
+            onCopyCommand(card !== null ? card.getAttribute('data-cmd-id') : null, copyEl)
           }
         })
 
