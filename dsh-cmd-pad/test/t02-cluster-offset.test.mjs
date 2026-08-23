@@ -110,6 +110,8 @@ function bootScene({ innerWidth = 1200, seedBody } = {}) {
   const windowStub = {
     innerWidth,
     __ModuleLoader__: { load(opts) { windowStub.__loaded = opts } },
+    addEventListener() {},
+    removeEventListener() {},
   }
   // 执行 client.js（new Function 注入 window/document 全局）
   // eslint-disable-next-line no-new-func

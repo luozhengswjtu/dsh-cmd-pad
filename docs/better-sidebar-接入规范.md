@@ -199,6 +199,10 @@ if (bs.features.includes('pluginSettings')) { // v0.12.0+：settings.pluginToggl
    明暗换肤、设置页开关卡片）全部由 better-sidebar 承担。
 4. 降级形态（探测不到 `betterSidebar`）：浮动图标 + 非模态右侧抽屉，无蒙层；关闭途径 =
    Esc / 顶栏 ✕ / 再点浮动图标。
+   - **抽屉为占用式布局**（T03 前体验修复，调整记录 #7）：打开时给 `#root` 注入
+     `margin-right: calc(var(--dsh-sidebar-width,0px) + 抽屉宽)`，主页面（含对话输入框）左移让位，
+     抽屉不遮挡内容——与 better-sidebar 面板同款 layout-push；关闭/卸载移除、resize 重算；
+     better-sidebar 完全不在场时同样生效（无动画但功能正确）。
 5. better-sidebar 在场但探测失败的极端场景（T06 前过渡期 / 服务探测失败的降级过渡态）：
    - 浮动图标默认右下角，与右上角按钮簇天然不重叠（无右偏移需求）；
    - **抽屉顶栏 ✕ 左移避让**（T01 实测：按钮簇 z-index 45 > 抽屉 30，fixed top:3px right:10px，

@@ -263,6 +263,29 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * 占用式布局推挤（better-sidebar 同款 layout-push，见接入规范 §5）：
+     * 抽屉打开时给 #root 注入 margin-right，主页面（含对话输入框）让出右侧宽度，
+     * 抽屉像独立窗口坐在空位上，不遮挡任何页面内容（vs 旧的覆盖式浮层）。
+     * 兼容 better-sidebar：其面板宽度走 `--dsh-sidebar-width` 变量驱动 #root
+     * margin；本函数用 inline calc 叠加自己的宽度，两面板并存时 margin 相加、
+     * 均完整显示；关闭时 removeProperty 回退到 better-sidebar 的规则。
+     * 动画：better-sidebar 在场时其 #root transition 已覆盖 margin-right；
+     * 不在场时无动画但功能正确（降级形态下可接受）。
+     */
+    function pushLayoutForDrawer(drawer, open) {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return
+      var appRoot = document.getElementById('root')
+      if (appRoot === null) return
+      if (open) {
+        var width = drawer.getBoundingClientRect().width
+        if (!(width > 0)) return
+        appRoot.style.marginRight = 'calc(var(--dsh-sidebar-width, 0px) + ' + width + 'px)'
+      } else {
+        appRoot.style.removeProperty('margin-right')
+      }
+    }
+
+    /**
      * cordis 插件主体（client 半）。
      * T01：始终渲染降级形态；T06 起先探测 betterSidebar，
      * 探测到则改走 registerTab（主形态），并跳过本浮动 UI。
@@ -272,19 +295,37 @@ window.__ModuleLoader__.load({
         ensureStyle()
 
         var root = createRoot()
+        var drawer = createDrawer(closeDrawer)
+
+        function openDrawer() {
+          drawer.setAttribute('data-open', 'true')
+          // 打开时重算避让（better-sidebar 挂载时序不定，此时必然已挂载）
+          applyClusterOffset(drawer)
+          // 占用式：主页面左移让位，抽屉不遮挡输入框
+          pushLayoutForDrawer(drawer, true)
+          window.addEventListener('resize', onResize)
+        }
+
+        function closeDrawer() {
+          drawer.setAttribute('data-open', 'false')
+          pushLayoutForDrawer(drawer, false)
+          window.removeEventListener('resize', onResize)
+        }
+
+        function onResize() {
+          if (drawer.getAttribute('data-open') !== 'true') return
+          pushLayoutForDrawer(drawer, true)
+        }
+
         var fab = createFab(function onToggle() {
           var open = drawer.getAttribute('data-open') === 'true'
-          drawer.setAttribute('data-open', open ? 'false' : 'true')
-          // 打开时重算避让（better-sidebar 挂载时序不定，此时必然已挂载）
-          if (!open) applyClusterOffset(drawer)
-        })
-        var drawer = createDrawer(function onClose() {
-          drawer.setAttribute('data-open', 'false')
+          if (open) closeDrawer()
+          else openDrawer()
         })
         var onKeydown = function onKeydown(event) {
           if (event.key !== 'Escape') return
           if (drawer.getAttribute('data-open') !== 'true') return
-          drawer.setAttribute('data-open', 'false')
+          closeDrawer()
         }
         document.addEventListener('keydown', onKeydown)
 
@@ -296,6 +337,9 @@ window.__ModuleLoader__.load({
 
         return function dispose() {
           document.removeEventListener('keydown', onKeydown)
+          window.removeEventListener('resize', onResize)
+          // 卸载时恢复布局（抽屉可能还开着）
+          pushLayoutForDrawer(drawer, false)
           if (root.parentNode !== null) root.parentNode.removeChild(root)
           removeStyle()
         }
