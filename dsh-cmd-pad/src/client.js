@@ -123,26 +123,24 @@ window.__ModuleLoader__.load({
       '  overflow:hidden;',
       '  -webkit-app-region:no-drag;',
       '}',
-      // ── T03：内容区布局（分组侧栏 + 命令列表）──
-      '.cmd-pad-layout{',
-      '  flex:1;',
-      '  display:flex;',
-      '  min-width:0;',
-      '  min-height:0;',
-      '  overflow:hidden;',
-      '}',
+      // ── T03 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）──
       '.cmd-pad-groups{',
       '  flex:none;',
-      '  width:132px;',
+      '  display:flex;',
+      '  flex-wrap:wrap;', // 分组项横向排列，放不下换行
+      '  align-items:center;',
+      '  gap:4px 6px;',
+      '  padding:6px 10px;',
+      '  border-bottom:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  max-height:96px;', // 最多约 3 行，超出滚动
       '  overflow-y:auto;',
       '  overflow-x:hidden;',
-      '  border-right:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
-      '  padding:6px 4px;',
       '  -webkit-app-region:no-drag;',
       '}',
       '.cmd-pad-content{',
       '  flex:1;',
       '  min-width:0;',
+      '  min-height:0;',
       '  overflow-y:auto;',
       '  padding:8px 10px;',
       '  -webkit-app-region:no-drag;',
@@ -202,18 +200,20 @@ window.__ModuleLoader__.load({
       '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
-      // ── T03：分组侧栏 ──
+      // ── T03：分组横条项（chip 样式，横向排列）──
       '.cmd-pad-group-row{',
-      '  display:flex;',
+      '  display:inline-flex;',
       '  align-items:center;',
       '  gap:4px;',
-      '  padding:4px 8px;',
+      '  max-width:160px;',
+      '  padding:3px 8px;',
       '  border-radius:6px;',
       '  cursor:pointer;',
       '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
       '  font-size:12px;',
       '  line-height:1.4;',
       '  user-select:none;',
+      '  white-space:nowrap;',
       '  -webkit-app-region:no-drag;',
       '}',
       '.cmd-pad-group-row:hover{',
@@ -230,11 +230,10 @@ window.__ModuleLoader__.load({
       '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
       '}',
       '.cmd-pad-group-name{',
-      '  flex:1;',
-      '  min-width:0;',
+      '  flex:none;',
+      '  max-width:120px;',
       '  overflow:hidden;',
       '  text-overflow:ellipsis;',
-      '  white-space:nowrap;',
       '  font-weight:500;',
       '}',
       '.cmd-pad-group-count{',
@@ -242,16 +241,18 @@ window.__ModuleLoader__.load({
       '  font-size:10px;',
       '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
       '}',
-      // 「上次使用」slot：虚线提示框（视觉规范 §2 配方）
+      // 「上次使用」slot：虚线框 chip
       '.cmd-pad-last-slot{',
-      '  margin:0 4px 6px;',
-      '  padding:4px 8px;',
+      '  display:inline-flex;',
+      '  align-items:center;',
+      '  padding:3px 8px;',
       '  border:1px dashed var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
       '  border-radius:6px;',
       '  cursor:pointer;',
       '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
       '  font-size:12px;',
       '  line-height:1.4;',
+      '  max-width:180px;',
       '  overflow:hidden;',
       '  text-overflow:ellipsis;',
       '  white-space:nowrap;',
@@ -263,19 +264,18 @@ window.__ModuleLoader__.load({
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
       '.cmd-pad-more-toggle{',
-      '  display:flex;',
+      '  display:inline-flex;',
       '  align-items:center;',
       '  gap:4px;',
-      '  width:100%;',
-      '  padding:4px 8px;',
-      '  border:none;',
+      '  padding:3px 8px;',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
       '  background:transparent;',
       '  border-radius:6px;',
       '  cursor:pointer;',
       '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
       '  font-size:12px;',
       '  line-height:1.4;',
-      '  text-align:left;',
+      '  white-space:nowrap;',
       '  user-select:none;',
       '  -webkit-app-region:no-drag;',
       '}',
@@ -284,9 +284,11 @@ window.__ModuleLoader__.load({
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
       '.cmd-pad-more-section{',
+      '  display:inline-flex;',
+      '  align-items:center;',
       '  font-size:11px;',
       '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
-      '  padding:6px 8px 2px;',
+      '  padding:0 2px;',
       '}',
       // ── T03：命令卡片 ──
       '.cmd-pad-section{',
@@ -1212,23 +1214,18 @@ window.__ModuleLoader__.load({
       searchClear.textContent = '\u2715'
       search.appendChild(searchClear)
 
-      // 布局（T03）：分组侧栏 + 内容区
-      var layout = document.createElement('div')
-      layout.className = 'cmd-pad-layout'
-
+      // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）
       var groupsEl = document.createElement('div')
       groupsEl.className = 'cmd-pad-groups'
 
       var contentEl = document.createElement('div')
       contentEl.className = 'cmd-pad-content'
 
-      layout.appendChild(groupsEl)
-      layout.appendChild(contentEl)
-
       var body = document.createElement('div')
       body.className = 'cmd-pad-drawer-body'
       body.appendChild(search)
-      body.appendChild(layout)
+      body.appendChild(groupsEl)
+      body.appendChild(contentEl)
 
       drawer.appendChild(head)
       drawer.appendChild(body)
