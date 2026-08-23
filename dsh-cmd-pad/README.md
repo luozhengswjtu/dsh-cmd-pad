@@ -110,6 +110,25 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 「复制」；`danger: true` 标记保留（卡片「危险」徽标 + 保存时关键词提示勾选），供未来运行通道
 恢复时做二次确认。
 
+## 主形态（T06，better-sidebar Tab）
+
+装了 better-sidebar 时 cmd-pad 注册为其侧边栏 Tab（探测 `ctx.get('betterSidebar')`，软依赖）：
+
+- **注册描述符**：id `cmd-pad:pad`、标题「命令」、order 45（终端与浏览器之间）、`single: true`、
+  单色 SVG 终端符号图标（视觉规范 §3.2）；
+- **badge**（能力门 `features.includes('badge')`）：Tab 角标显示命令总数，空库不显示（模块级
+  缓存，数据加载时更新）；
+- **onActivate**（能力门 `tabLifecycle`）：切回 Tab 时拉取最新命令库（多标签页/手改 yml 保鲜）；
+- **插件设置**（能力门 `pluginSettings`）：设置页「命令」卡片齿轮内「打开时定位上次使用的分组」
+  开关（`openToLastUsed`，持久化于 `pluginSettings['cmd-pad:pad']`）；
+- **React 桥接**：`require('react')`（ModuleLoader 白名单）桥接组件 ref 挂载**纯 DOM 面板**，
+  scope（sessionId/cwd）变化重挂、`visible` 性能门（面板隐藏时挂起渲染，恢复可见补渲染）；
+- **内容区 100% 复用**：主形态 Tab 与降级抽屉共用同一份内容区代码（`createCmdPadPanel`
+  共享工厂：状态/渲染/搜索/写操作/事件/键盘），两形态功能完全等价；
+- **主形态不自建浮层**：无浮动图标、无抽屉、无遮罩（外壳全由 better-sidebar 承担）；
+- **回归**：`node test/t06-main-form.test.mjs`（14 项：探测链/descriptor 字段/能力门×3/
+  无浮层/react 不可用回退/HMR/组件挂载/scope 重挂/visible 门/onActivate/插件设置/Esc 链）。
+
 ## 开发守则
 
 见仓库根 `AGENTS.md` 与 `docs/`（接入规范 / 视觉风格统一规范）。

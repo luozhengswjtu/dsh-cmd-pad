@@ -126,6 +126,15 @@ window.__ModuleLoader__.load({
       '  overflow:hidden;',
       '  -webkit-app-region:no-drag;',
       '}',
+      // ── T06 主形态：better-sidebar Tab 宿主容器（撑满面板，内容区同抽屉）──
+      '.cmd-pad-tab-host{',
+      '  height:100%;',
+      '  min-height:0;',
+      '  display:flex;',
+      '  flex-direction:column;',
+      '  box-sizing:border-box;',
+      '  -webkit-app-region:no-drag;',
+      '}',
       // ── T03 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）──
       '.cmd-pad-groups{',
       '  flex:none;',
@@ -1130,7 +1139,56 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * 抽屉外壳（T01）：head（标题 + + 添加 + ✕）+ 搜索栏 + 布局（分组侧栏 / 内容区）。
+     * 面板内容骨架（T03 布局，用户定稿：搜索 → 分组横条 → 命令区，上下结构）。
+     * 降级抽屉与主形态 Tab 共用同一份骨架（T06：内容区两形态 100% 复用）。
+     * 返回 { body, searchInput, searchCount, groupsEl, contentEl, clearBtn }。
+     */
+    function createPanelBody(bodyClass) {
+      // 搜索栏（T03）：放大镜 + input + 计数 + 清空
+      var search = document.createElement('div')
+      search.className = 'cmd-pad-search'
+
+      var searchIcon = document.createElement('span')
+      searchIcon.innerHTML = SEARCH_SVG
+      search.appendChild(searchIcon)
+
+      var searchInput = document.createElement('input')
+      searchInput.type = 'text'
+      searchInput.className = 'cmd-pad-search-input'
+      searchInput.placeholder = '搜索命令（/）'
+      searchInput.setAttribute('aria-label', '搜索命令')
+      search.appendChild(searchInput)
+
+      var searchCount = document.createElement('span')
+      searchCount.className = 'cmd-pad-search-count'
+      search.appendChild(searchCount)
+
+      var searchClear = document.createElement('button')
+      searchClear.type = 'button'
+      searchClear.className = 'cmd-pad-search-clear'
+      searchClear.title = '清空搜索（Esc）'
+      searchClear.setAttribute('aria-label', '清空搜索')
+      searchClear.textContent = '\u2715'
+      search.appendChild(searchClear)
+
+      // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）
+      var groupsEl = document.createElement('div')
+      groupsEl.className = 'cmd-pad-groups'
+
+      var contentEl = document.createElement('div')
+      contentEl.className = 'cmd-pad-content'
+
+      var body = document.createElement('div')
+      body.className = bodyClass || 'cmd-pad-drawer-body'
+      body.appendChild(search)
+      body.appendChild(groupsEl)
+      body.appendChild(contentEl)
+
+      return { body: body, searchInput: searchInput, searchCount: searchCount, groupsEl: groupsEl, contentEl: contentEl, clearBtn: searchClear }
+    }
+
+    /**
+     * 抽屉外壳（T01）：head（标题 + + 添加 + ✕）+ 面板内容骨架。
      * 返回 { drawer, addBtn, searchInput, searchCount, groupsEl, contentEl }。
      */
     function createDrawer(onClose) {
@@ -1168,49 +1226,11 @@ window.__ModuleLoader__.load({
       head.appendChild(addBtn)
       head.appendChild(close)
 
-      // 搜索栏（T03）：放大镜 + input + 计数 + 清空
-      var search = document.createElement('div')
-      search.className = 'cmd-pad-search'
-
-      var searchIcon = document.createElement('span')
-      searchIcon.innerHTML = SEARCH_SVG
-      search.appendChild(searchIcon)
-
-      var searchInput = document.createElement('input')
-      searchInput.type = 'text'
-      searchInput.className = 'cmd-pad-search-input'
-      searchInput.placeholder = '搜索命令（/）'
-      searchInput.setAttribute('aria-label', '搜索命令')
-      search.appendChild(searchInput)
-
-      var searchCount = document.createElement('span')
-      searchCount.className = 'cmd-pad-search-count'
-      search.appendChild(searchCount)
-
-      var searchClear = document.createElement('button')
-      searchClear.type = 'button'
-      searchClear.className = 'cmd-pad-search-clear'
-      searchClear.title = '清空搜索（Esc）'
-      searchClear.setAttribute('aria-label', '清空搜索')
-      searchClear.textContent = '\u2715'
-      search.appendChild(searchClear)
-
-      // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）
-      var groupsEl = document.createElement('div')
-      groupsEl.className = 'cmd-pad-groups'
-
-      var contentEl = document.createElement('div')
-      contentEl.className = 'cmd-pad-content'
-
-      var body = document.createElement('div')
-      body.className = 'cmd-pad-drawer-body'
-      body.appendChild(search)
-      body.appendChild(groupsEl)
-      body.appendChild(contentEl)
+      var body = createPanelBody('cmd-pad-drawer-body')
 
       drawer.appendChild(head)
-      drawer.appendChild(body)
-      return { drawer: drawer, addBtn: addBtn, searchInput: searchInput, searchCount: searchCount, groupsEl: groupsEl, contentEl: contentEl }
+      drawer.appendChild(body.body)
+      return { drawer: drawer, addBtn: addBtn, searchInput: body.searchInput, searchCount: body.searchCount, groupsEl: body.groupsEl, contentEl: body.contentEl, clearBtn: body.clearBtn, body: body.body }
     }
 
     // ── 分组行 / 上次 slot / 更多（T03 渲染）──
@@ -1827,611 +1847,893 @@ window.__ModuleLoader__.load({
     }
 
     // ════════════════════════════════════════════════════════════════════
-    // cordis 插件主体（client 半）
-    // T03：降级形态完整内容区；T06 起先探测 betterSidebar 走 registerTab（主形态）。
+    // T06 共享内容区工厂：主形态 Tab 与降级抽屉 100% 复用同一份内容区代码
+    // （状态 / 渲染 / 写操作 / 事件绑定；外壳差异由调用方承担）
     // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * 创建 cmd-pad 内容区面板。opts：
+     *  - shell: { body, searchInput, searchCount, groupsEl, contentEl, clearBtn } | null
+     *           骨架复用（降级形态用 createDrawer 已建好的；null = 自建，供主形态挂载）
+     *  - sessionId: () => string     会话 id（降级探测 / 主形态 scope.sessionId）
+     *  - cwd: string | null          主形态 scope.cwd 可直接给；降级传 null 由 host 解析
+     *  - addBtn: Element | null      「+ 添加」按钮（降级用抽屉 head 的；null = 自建放搜索行右侧）
+     *  - toastRoot: Element          Toast 挂载容器
+     *  - readSetting(key, def)       插件设置读取（主形态 prefs.pluginSettings；降级返回默认）
+     *  - onDataLoaded(count)         数据加载成功后回调（主形态 badge 缓存）
+     *  - isPanelActive: () => bool   面板激活判定（Esc 链 / `/` 聚焦搜索；降级抽屉 open / 主形态 visible）
+     *  - onEscapeTrailing: () => void Esc 链末级（降级收起抽屉；主形态 no-op）
+     * 返回 { body, open, refresh, setVisible, dispose }。
+     */
+    function createCmdPadPanel(ctx, opts) {
+      opts = opts || {}
+      var body
+      var searchInput
+      var searchCount
+      var groupsEl
+      var contentEl
+      var clearBtn
+      if (opts.shell !== null && opts.shell !== undefined) {
+        body = opts.shell.body
+        searchInput = opts.shell.searchInput
+        searchCount = opts.shell.searchCount
+        groupsEl = opts.shell.groupsEl
+        contentEl = opts.shell.contentEl
+        clearBtn = opts.shell.clearBtn || null
+      } else {
+        var built = createPanelBody('cmd-pad-drawer-body')
+        body = built.body
+        searchInput = built.searchInput
+        searchCount = built.searchCount
+        groupsEl = built.groupsEl
+        contentEl = built.contentEl
+        clearBtn = built.clearBtn
+      }
+
+      // 「+ 添加」：降级用抽屉 head 传入的元素；主形态自建并放搜索行右端
+      var addBtn = opts.addBtn
+      if (addBtn === null || addBtn === undefined) {
+        addBtn = document.createElement('button')
+        addBtn.type = 'button'
+        addBtn.className = 'cmd-pad-add'
+        addBtn.textContent = '+ 添加'
+        addBtn.title = '添加命令'
+        addBtn.setAttribute('aria-label', '添加命令')
+        body.querySelector('.cmd-pad-search').appendChild(addBtn)
+      }
+
+      // ── T03/T04 状态 ──
+      var data = null               // { library, state, cwd, mtime }
+      var activeView = 'all'        // all | current-project | ungrouped | group:<name>
+      var searchQuery = ''          // 非空 = 搜索态
+      var moreExpanded = false
+      var toast = createToast(opts.toastRoot || body)
+      var overlay = null            // 弹窗遮罩（表单/确认）
+      var undoState = null          // { snapshot, timer } 删除撤销（5s）
+      var pendingInitialView = false // 打开/激活时待定的初始视图（上次使用分组）
+      var panelVisible = true       // T06 visible 性能门（主形态：宿主 visible；降级恒 true）
+      var renderDirty = false       // 不可见期间挂起的重渲染
+
+      function findCommand(cmdId) {
+        if (data === null || !Array.isArray(data.library.commands)) return null
+        for (var i = 0; i < data.library.commands.length; i++) {
+          if (data.library.commands[i].id === cmdId) return data.library.commands[i]
+        }
+        return null
+      }
+
+      function currentModel() {
+        return buildGroupModel(data.library, data.state, data.cwd)
+      }
+
+      function renderContentState(state) {
+        clearEl(contentEl)
+        if (state === 'loading') {
+          contentEl.appendChild(emptyEl('加载中…'))
+        } else if (state === 'error') {
+          contentEl.appendChild(emptyEl('加载失败，请检查 dsh web 服务'))
+          var row = el('div', 'cmd-pad-retry-row')
+          var retry = el('button', 'cmd-pad-btn', '重试')
+          retry.type = 'button'
+          retry.setAttribute('data-retry', '')
+          row.appendChild(retry)
+          contentEl.appendChild(row)
+        }
+      }
+
+      function renderContentView() {
+        clearEl(contentEl)
+        var commands = data.library.commands
+        if (searchQuery !== '') {
+          // 搜索态：平铺命中命令，命中数显示在搜索栏
+          var hits = []
+          for (var i = 0; i < commands.length; i++) {
+            if (searchMatches(commands[i], searchQuery).hit) hits.push(commands[i])
+          }
+          if (hits.length === 0) {
+            contentEl.appendChild(emptyEl('没有匹配的命令'))
+          } else {
+            for (var j = 0; j < hits.length; j++) contentEl.appendChild(cardEl(hits[j], searchQuery))
+          }
+          return
+        }
+        if (activeView === 'all') {
+          var model = currentModel()
+          var sections = allSections(model)
+          var any = false
+          for (var s = 0; s < sections.length; s++) {
+            var sec = sections[s]
+            var secCmds = commands.filter(function (c) { return (c.groups || []).indexOf(sec.name) !== -1 })
+            if (secCmds.length === 0) continue
+            any = true
+            contentEl.appendChild(sectionEl(sec.display, secCmds.length, secCmds, null))
+          }
+          if (model.hasUngrouped) {
+            var un = commands.filter(function (c) { return !c.groups || c.groups.length === 0 })
+            if (un.length > 0) {
+              any = true
+              contentEl.appendChild(sectionEl('未分组', un.length, un, null))
+            }
+          }
+          if (!any) contentEl.appendChild(emptyEl('还没有命令，可手改 commands.yml 添加'))
+          return
+        }
+        var cmds = commandsForView(commands, activeView, data.cwd)
+        if (cmds.length === 0) {
+          if (activeView === 'current-project') contentEl.appendChild(emptyEl('当前项目还没有命令'))
+          else if (activeView === 'ungrouped') contentEl.appendChild(emptyEl('没有未分组的命令'))
+          else contentEl.appendChild(emptyEl('该分组还没有命令'))
+          return
+        }
+        for (var k = 0; k < cmds.length; k++) contentEl.appendChild(cardEl(cmds[k], null))
+      }
+
+      function renderGroups() {
+        clearEl(groupsEl)
+        if (data === null) return
+        var model = currentModel()
+        // 用户定稿（调整记录 #17）：不显示「上次使用」slot 标签，打开抽屉直接定位该视图
+        groupsEl.appendChild(groupRow(null, '全部', null, 'all', activeView === 'all'))
+        if (model.cwd) {
+          var cwdDisplay = model.displayNames[model.cwd] || pathBase(model.cwd)
+          groupsEl.appendChild(groupRow('项目：', cwdDisplay, null, 'current-project', activeView === 'current-project'))
+        }
+        if (model.hasUngrouped) {
+          groupsEl.appendChild(groupRow(null, '未分组', null, 'ungrouped', activeView === 'ungrouped'))
+        }
+        for (var i = 0; i < model.pinnedCustom.length; i++) {
+          var pc = model.pinnedCustom[i]
+          groupsEl.appendChild(groupRow(null, pc, model.countByGroup[pc], 'group:' + pc, activeView === 'group:' + pc))
+        }
+        if (model.moreCount > 0) {
+          groupsEl.appendChild(moreToggle(model.moreCount, moreExpanded))
+          if (moreExpanded) groupsEl.appendChild(moreBody(model, activeView))
+        }
+      }
+
+      /** T06 visible 性能门：不可见时挂起重渲染，恢复可见时补渲染。 */
+      function renderAll() {
+        if (!panelVisible) {
+          renderDirty = true
+          return
+        }
+        if (data === null) return
+        var model = currentModel()
+        if (!isValidView(activeView, model)) {
+          activeView = model.lastUsed !== null ? model.lastUsed.id : 'all'
+        }
+        renderGroups()
+        renderContentView()
+        updateSearchCount()
+      }
+
+      function updateSearchCount() {
+        if (searchQuery === '') {
+          searchCount.textContent = ''
+          return
+        }
+        if (data === null) return
+        var n = 0
+        var commands = data.library.commands
+        for (var i = 0; i < commands.length; i++) {
+          if (searchMatches(commands[i], searchQuery).hit) n++
+        }
+        searchCount.textContent = '命中 ' + n + ' 条'
+      }
+
+      function refreshData() {
+        loadState('loading')
+        renderContentState('loading')
+        clearEl(groupsEl)
+        var p
+        try {
+          p = loadLibrary(ctx)
+        } catch (error) {
+          p = Promise.reject(error)
+        }
+        p.then(function (payload) {
+          data = {
+            library: (payload !== null && typeof payload === 'object' && payload.library) ? payload.library : { commands: [] },
+            state: (payload !== null && typeof payload === 'object' && payload.state) ? payload.state : {},
+            cwd: (payload !== null && typeof payload === 'object' && typeof payload.cwd === 'string' && payload.cwd !== '') ? payload.cwd : (opts.cwd || null),
+            mtime: payload !== null ? payload.mtime : null,
+          }
+          loadState('ready')
+          var model = currentModel()
+          if (pendingInitialView) {
+            // 打开/激活：初始视图 = 上次使用的分组（§3.4 语义），失效回退「全部」
+            pendingInitialView = false
+            activeView = (model.lastUsed !== null && isValidView(model.lastUsed.id, model)) ? model.lastUsed.id : 'all'
+          } else if (!isValidView(activeView, model)) {
+            activeView = model.lastUsed !== null ? model.lastUsed.id : 'all'
+          }
+          renderAll()
+          if (typeof opts.onDataLoaded === 'function') {
+            var count = (data.library && Array.isArray(data.library.commands)) ? data.library.commands.length : 0
+            opts.onDataLoaded(count)
+          }
+        }).catch(function () {
+          loadState('error')
+          renderContentState('error')
+        })
+      }
+
+      function loadState(s) { /* 预留：如需加载态门控可扩展 */ }
+
+      function selectView(viewId) {
+        searchQuery = ''
+        searchInput.value = ''
+        activeView = viewId
+        renderAll()
+      }
+
+      function toggleMore() {
+        moreExpanded = !moreExpanded
+        renderGroups()
+      }
+
+      function clearSearch() {
+        searchQuery = ''
+        searchInput.value = ''
+        renderAll()
+      }
+
+      function focusSearch() {
+        try {
+          if (typeof searchInput.focus === 'function') searchInput.focus()
+        } catch (error) { /* 忽略 */ }
+      }
+
+      /**
+       * 复制语境下的 lastUsed 视图（功能文档 §3.4）：
+       * 「全部」/「未分组」视图 → 命令第一个所属分组（'all' 不作为 lastUsed 存储）。
+       */
+      function viewIdForLastUsed(cmd) {
+        var viewId = activeView
+        if (viewId === 'all' || viewId === 'ungrouped') {
+          var firstGroup = (cmd.groups !== null && Array.isArray(cmd.groups) && cmd.groups.length > 0) ? cmd.groups[0] : null
+          if (firstGroup !== null) viewId = 'group:' + firstGroup
+        }
+        return viewId
+      }
+
+      /** 刷新「上次使用」slot（§3.4）：本地即时 + 远端持久化 + 重渲染。 */
+      function applyLastUsed(cmd) {
+        var viewId = viewIdForLastUsed(cmd)
+        data.state.lastUsedViewId = viewId
+        if (data.state.viewLastUsedAt === null || typeof data.state.viewLastUsedAt !== 'object') data.state.viewLastUsedAt = {}
+        data.state.viewLastUsedAt[viewId] = Date.now()
+        persistLastUsed(viewId)
+        renderAll()
+      }
+
+      function onCopyCommand(cmdId, anchorEl) {
+        if (cmdId === null) return
+        var cmd = findCommand(cmdId)
+        if (cmd === null || typeof cmd.cmd !== 'string') return
+        copyText(cmd.cmd, function (ok) {
+          if (!ok) {
+            toast('复制失败', 'error', null, null, anchorEl)
+            return
+          }
+          toast('已复制', null, null, null, anchorEl)
+          // 刷新「上次使用」slot（功能文档 §3.4）
+          applyLastUsed(cmd)
+        })
+      }
+
+      // ── T04：写操作（添加/编辑/删除/重命名/常驻 + 撤销）──
+
+      function persistLibrary(library, onDone) {
+        var p
+        try {
+          p = window.fetch('/cmd-pad/api/library', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ library: library }),
+          }).then(function (res) {
+            if (!res.ok) throw new Error('library put failed: ' + res.status)
+            return res.json()
+          })
+        } catch (error) {
+          p = Promise.reject(error)
+        }
+        p.then(function () { onDone(true) }, function () { onDone(false) })
+      }
+
+      function persistState(patch) {
+        try {
+          window.fetch('/cmd-pad/api/state', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(patch),
+          }).catch(function () {})
+        } catch (error) { /* 静默 */ }
+      }
+
+      function showModal(node) {
+        if (overlay === null) {
+          overlay = el('div', 'cmd-pad-overlay')
+          document.body.appendChild(overlay)
+        }
+        clearEl(overlay)
+        overlay.appendChild(node)
+        overlay.style.display = 'flex'
+      }
+
+      function hideModal() {
+        if (overlay !== null) {
+          overlay.style.display = 'none'
+          clearEl(overlay)
+        }
+      }
+
+      function modalOpen() {
+        return overlay !== null && overlay.style.display === 'flex'
+      }
+
+      function displayNameOf(groupName) {
+        var model = currentModel()
+        return model.displayNames[groupName] || groupName
+      }
+
+      /** 全部分组名（含无命令的常驻分组），用于重命名冲突检测。 */
+      function allGroupNames() {
+        var model = currentModel()
+        var names = {}
+        for (var k in model.groupSet) {
+          if (Object.prototype.hasOwnProperty.call(model.groupSet, k)) names[k] = true
+        }
+        var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
+        for (var i = 0; i < pinned.length; i++) {
+          if (!names[pinned[i]]) names[pinned[i]] = true
+        }
+        return names
+      }
+
+      /** 表单分组选项：自定义（常驻在前，含无命令常驻）→ 项目（当前项目 → 其他项目）。 */
+      function groupOptions() {
+        var model = currentModel()
+        var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
+        var seen = {}
+        var opts = []
+        var customOrder = model.pinnedCustom.concat(model.unpinnedCustom)
+        for (var i = 0; i < pinned.length; i++) {
+          var pg = pinned[i]
+          if (!isProjectGroup(pg) && customOrder.indexOf(pg) === -1) customOrder.push(pg)
+        }
+        for (var j = 0; j < customOrder.length; j++) {
+          var cg = customOrder[j]
+          if (seen[cg]) continue
+          seen[cg] = true
+          opts.push({ name: cg, display: cg, pinned: pinned.indexOf(cg) !== -1 })
+        }
+        var projs = []
+        if (model.cwd) projs.push(model.cwd)
+        for (var k = 0; k < model.otherProjects.length; k++) projs.push(model.otherProjects[k])
+        for (var m = 0; m < projs.length; m++) {
+          var pp = projs[m]
+          if (seen[pp]) continue
+          seen[pp] = true
+          opts.push({ name: pp, display: model.displayNames[pp] || pathBase(pp), pinned: false })
+        }
+        return opts
+      }
+
+      function openAddForm() {
+        var model = currentModel()
+        var checkedSet = {}
+        var defs = defaultCheckedGroups(activeView, model, data.state, data.cwd)
+        for (var i = 0; i < defs.length; i++) checkedSet[defs[i]] = true
+        showModal(buildFormModal({
+          mode: 'add',
+          groupOptions: groupOptions(),
+          checkedSet: checkedSet,
+          toast: toast,
+          onCancel: hideModal,
+          onSubmit: function (payload) { submitCommand(payload, null) },
+        }))
+      }
+
+      function openEditForm(cmdId) {
+        var cmd = findCommand(cmdId)
+        if (cmd === null) return
+        var checkedSet = {}
+        var groups = cmd.groups || []
+        for (var i = 0; i < groups.length; i++) checkedSet[groups[i]] = true
+        showModal(buildFormModal({
+          mode: 'edit',
+          cmd: cmd,
+          groupOptions: groupOptions(),
+          checkedSet: checkedSet,
+          toast: toast,
+          onCancel: hideModal,
+          onSubmit: function (payload) { submitCommand(payload, cmdId) },
+        }))
+      }
+
+      function submitCommand(payload, editId) {
+        var commands = data.library.commands
+        var next
+        if (editId !== null) {
+          next = commands.map(function (c) { return c.id === editId ? Object.assign({}, c, payload) : c })
+        } else {
+          next = commands.concat([Object.assign({ id: generateCommandId(payload.title) }, payload)])
+        }
+        persistLibrary(Object.assign({}, data.library, { commands: next }), function (ok) {
+          if (!ok) {
+            toast('保存失败', 'error')
+            return
+          }
+          data.library = Object.assign({}, data.library, { commands: next })
+          hideModal()
+          renderAll()
+          toast(editId !== null ? '已保存' : '已添加')
+        })
+      }
+
+      /** 删除/重命名等结构变更：保存快照 → PUT → 渲染 + 5s 可撤销。 */
+      function mutateLibrary(transform, message) {
+        var snapshot = JSON.parse(JSON.stringify(data.library))
+        var next = transform(snapshot)
+        persistLibrary(next, function (ok) {
+          if (!ok) {
+            toast('保存失败', 'error')
+            return
+          }
+          data.library = next
+          armUndo(snapshot, message)
+          renderAll()
+        })
+      }
+
+      /** 5 秒内可撤销（Toast 带「撤销」操作）。 */
+      function armUndo(snapshot, message) {
+        if (undoState !== null && undoState.timer !== null) clearTimeout(undoState.timer)
+        var timer = setTimeout(function () {
+          if (undoState !== null && undoState.timer === timer) undoState = null
+        }, 5000)
+        undoState = { snapshot: snapshot, timer: timer }
+        toast(message + '（5 秒内可撤销）', null, '撤销', function () {
+          if (undoState === null) return
+          clearTimeout(undoState.timer)
+          var snap = undoState.snapshot
+          undoState = null
+          persistLibrary(snap, function (ok) {
+            if (!ok) {
+              toast('撤销失败', 'error')
+              return
+            }
+            data.library = snap
+            renderAll()
+            toast('已撤销')
+          })
+        })
+      }
+
+      /** 命令删除（设计文档 §3.5 语境语义：解关联 vs 彻底删除 + 确认）。 */
+      function requestDeleteCommand(cmdId) {
+        var cmd = findCommand(cmdId)
+        if (cmd === null) return
+        var plan = deletionPlan(cmd, activeView)
+        if (plan.mode === 'unlink') {
+          // 仅解除当前分组关联（静默）
+          mutateLibrary(function (lib) {
+            return Object.assign({}, lib, { commands: lib.commands.map(function (c) {
+              if (c.id !== cmdId) return c
+              return Object.assign({}, c, { groups: c.groups.filter(function (g) { return g !== plan.group }) })
+            }) })
+          }, '已从「' + displayNameOf(plan.group) + '」解关联')
+          return
+        }
+        showModal(buildConfirmModal({
+          title: '删除命令',
+          message: '确定彻底删除「' + cmd.title + '」？\n删除后 5 秒内可撤销。',
+          danger: false,
+          okLabel: '删除',
+          onCancel: hideModal,
+          onConfirm: function () {
+            hideModal()
+            mutateLibrary(function (lib) {
+              return Object.assign({}, lib, { commands: lib.commands.filter(function (c) { return c.id !== cmdId }) })
+            }, '已删除')
+          },
+        }))
+      }
+
+      /** 分组删除（右键）：确认弹窗列出影响（N 解关联 / M 彻底删除）。 */
+      function requestDeleteGroup(name) {
+        var plan = groupDeletionPlan(name, data.library)
+        var message = '删除分组「' + name + '」：\n' +
+          plan.affected.length + ' 条命令解除关联，其中 ' + plan.deletedOnly.length + ' 条仅此分组的将彻底删除。\n删除后 5 秒内可撤销。'
+        showModal(buildConfirmModal({
+          title: '删除分组',
+          message: message,
+          danger: plan.deletedOnly.length > 0,
+          okLabel: '删除',
+          onCancel: hideModal,
+          onConfirm: function () {
+            hideModal()
+            mutateLibrary(function (lib) {
+              return Object.assign({}, lib, { commands: lib.commands.map(function (c) {
+                var groups = c.groups || []
+                if (groups.indexOf(name) === -1) return c
+                var rest = groups.filter(function (g) { return g !== name })
+                return rest.length === 0 ? null : Object.assign({}, c, { groups: rest })
+              }).filter(Boolean) })
+            }, '分组已删除')
+          },
+        }))
+      }
+
+      /** 分组重命名（仅自定义分组）：级联更新 + 冲突拒绝（弹窗保留可改）。 */
+      function requestRenameGroup(name) {
+        if (isProjectGroup(name)) return
+        showModal(buildRenameModal(name, hideModal, function (newName) {
+          var result = renameGroup(data.library, name, newName, allGroupNames())
+          if (!result.ok) {
+            toast(result.reason, 'error')
+            return
+          }
+          hideModal()
+          mutateLibrary(function () { return result.library }, '分组已重命名')
+          var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
+          if (pinned.indexOf(name) !== -1) {
+            var nextPinned = pinned.map(function (g) { return g === name ? newName : g })
+            data.state.pinnedGroups = nextPinned
+            persistState({ pinnedGroups: nextPinned })
+          }
+        }))
+      }
+
+      /** 常驻切换（右键分组项）：state.pinnedGroups 持久化 + 侧栏重排。 */
+      function toggleGroupPinned(name) {
+        var next = togglePinned(data.state.pinnedGroups, name)
+        data.state.pinnedGroups = next
+        persistState({ pinnedGroups: next })
+        renderAll()
+      }
+
+      // ── 事件委托（一次绑定，随重渲染复用）──
+      addBtn.addEventListener('click', function () {
+        if (data === null) return
+        openAddForm()
+      })
+
+      groupsEl.addEventListener('click', function (event) {
+        var target = event.target || groupsEl
+        var moreBtn = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-more-toggle') !== null })
+        if (moreBtn !== null) {
+          toggleMore()
+          return
+        }
+        var row = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-view-id') !== null })
+        if (row !== null) selectView(row.getAttribute('data-view-id'))
+      })
+
+      // 分组项右键（自定义分组：设为常驻/取消常驻、重命名、删除；项目分组无操作）
+      groupsEl.addEventListener('contextmenu', function (event) {
+        var target = event.target || groupsEl
+        if (typeof event.preventDefault === 'function') event.preventDefault()
+        var row = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-view-id') !== null })
+        if (row === null) return
+        var viewId = row.getAttribute('data-view-id')
+        if (viewId.slice(0, 6) !== 'group:') return
+        var name = viewId.slice(6)
+        if (isProjectGroup(name)) return // §3.1 项目分组由系统管理，无右键操作
+        var pinned = (Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []).indexOf(name) !== -1
+        openContextMenu(event.clientX || 0, event.clientY || 0, [
+          { label: pinned ? '取消常驻' : '设为常驻', onClick: function () { toggleGroupPinned(name) } },
+          { label: '重命名', onClick: function () { requestRenameGroup(name) } },
+          { label: '删除', danger: true, onClick: function () { requestDeleteGroup(name) } },
+        ])
+      })
+
+      contentEl.addEventListener('click', function (event) {
+        var target = event.target || contentEl
+        var retry = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-retry') !== null })
+        if (retry !== null) {
+          refreshData()
+          return
+        }
+        var copyEl = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-copy-cmd') !== null })
+        if (copyEl !== null) {
+          var card = closestUp(copyEl, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
+          // Toast 锚定到复制按钮/命令块左侧（用户定稿）
+          onCopyCommand(card !== null ? card.getAttribute('data-cmd-id') : null, copyEl)
+        }
+      })
+
+      // 卡片右键（复制 / 编辑 / 删除）
+      contentEl.addEventListener('contextmenu', function (event) {
+        var target = event.target || contentEl
+        if (typeof event.preventDefault === 'function') event.preventDefault()
+        var card = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
+        if (card === null) return
+        var cmdId = card.getAttribute('data-cmd-id')
+        openContextMenu(event.clientX || 0, event.clientY || 0, [
+          { label: '复制', onClick: function () { onCopyCommand(cmdId) } },
+          { label: '编辑', onClick: function () { openEditForm(cmdId) } },
+          { label: '删除', danger: true, onClick: function () { requestDeleteCommand(cmdId) } },
+        ])
+      })
+
+      searchInput.addEventListener('input', function () {
+        searchQuery = searchInput.value || ''
+        renderContentView()
+        updateSearchCount()
+      })
+
+      // 清空按钮
+      if (clearBtn !== null) {
+        clearBtn.addEventListener('click', function () {
+          if (searchQuery !== '') clearSearch()
+          else focusSearch()
+        })
+      }
+
+      // 键盘（功能文档 §4.4）：Esc 链（弹层 → 菜单 → 清空搜索 → 形态末级）；/ 聚焦搜索
+      function panelActive() {
+        if (!panelVisible) return false
+        return (typeof opts.isPanelActive === 'function') ? opts.isPanelActive() : true
+      }
+      var onKeydown = function onKeydown(event) {
+        if (event.key === 'Escape') {
+          if (modalOpen()) {
+            hideModal()
+            if (typeof event.preventDefault === 'function') event.preventDefault()
+            return
+          }
+          if (contextMenuEl !== null) {
+            closeContextMenu()
+            if (typeof event.preventDefault === 'function') event.preventDefault()
+            return
+          }
+          if (!panelActive()) return
+          if (searchQuery !== '') {
+            clearSearch()
+            if (typeof event.preventDefault === 'function') event.preventDefault()
+            return
+          }
+          if (typeof opts.onEscapeTrailing === 'function') opts.onEscapeTrailing()
+          return
+        }
+        if (event.key === '/' && panelActive()) {
+          var target = event.target
+          var tag = target !== null && target !== undefined ? target.tagName : undefined
+          if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !(target !== null && target.isContentEditable)) {
+            if (typeof event.preventDefault === 'function') event.preventDefault()
+            focusSearch()
+          }
+        }
+      }
+      document.addEventListener('keydown', onKeydown)
+
+      /** 打开/激活面板：按设置决定初始视图并拉取最新命令库（§5.3 多标签页/手改 yml 保鲜）。 */
+      function open() {
+        var readSetting = (typeof opts.readSetting === 'function') ? opts.readSetting : function (k, d) { return d }
+        pendingInitialView = readSetting('openToLastUsed', true) !== false
+        refreshData()
+      }
+
+      /** 外部主动拉取最新命令库（onActivate / 重试）。 */
+      function refresh() {
+        refreshData()
+      }
+
+      /** T06 visible 性能门：主形态宿主传入；不可见时挂起渲染，恢复时补渲染。 */
+      function setVisible(v) {
+        panelVisible = !!v
+        if (panelVisible && renderDirty) {
+          renderDirty = false
+          renderAll()
+        }
+      }
+
+      return {
+        body: body,
+        open: open,
+        refresh: refresh,
+        setVisible: setVisible,
+        dispose: function () {
+          document.removeEventListener('keydown', onKeydown)
+          if (undoState !== null && undoState.timer !== null) clearTimeout(undoState.timer)
+          undoState = null
+          closeContextMenu()
+          hideModal()
+        },
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // cordis 插件主体（client 半）
+    // T06：先探测 betterSidebar → 主形态 registerTab；否则降级浮动图标 + 抽屉
+    // ════════════════════════════════════════════════════════════════════
+    /** better-sidebar 服务探测（AGENTS.md 硬规则 1：ctx.get 可选探测，绝不硬 inject）。 */
+    function probeBetterSidebar(ctx) {
+      if (ctx === null || ctx === undefined) return undefined
+      var bs = (typeof ctx.get === 'function') ? ctx.get('betterSidebar') : undefined
+      if (bs === null || bs === undefined) bs = ctx.betterSidebar
+      return bs
+    }
+
+    /** 主形态 Tab 图标（视觉规范 §3.2：16 viewBox / 1.5px stroke / currentColor / round）。 */
+    function createCmdPadIcon(createElement, size) {
+      var px = typeof size === 'number' && size > 0 ? size : 16
+      return createElement('svg', {
+        viewBox: '0 0 16 16',
+        width: px,
+        height: px,
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '1.5',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'aria-hidden': 'true',
+      },
+        createElement('rect', { x: '1.25', y: '1.25', width: '13.5', height: '13.5', rx: '2.5' }),
+        createElement('path', { d: 'm4.5 5.5 2.5 2.5-2.5 2.5' }),
+        createElement('path', { d: 'M9 10.5h3' })
+      )
+    }
+
+    // 主形态模块级状态：badge 命令数缓存（多会话多 Tab 共享命令库）；Tab 面板注册表（onActivate 定位）
+    var mainTabBadgeCount = null
+    var mainTabPanels = {}
+
+    /**
+     * 主形态：注册 better-sidebar Tab（T06）。内容区 = createCmdPadPanel 100% 复用。
+     * badge / onActivate / pluginToggles 均走 features 能力门（接入规范 §4）。
+     * require('react') 不可用返回 false，调用方回退降级形态（TASK.md T06 依赖调整点）。
+     */
+    function registerMainTab(ctx, bs) {
+      var React = null
+      try { React = require('react') } catch (error) { return false }
+      if (React === null || typeof React.createElement !== 'function' || typeof React.useEffect !== 'function' || typeof React.useRef !== 'function') return false
+      var createElement = React.createElement
+      var useEffect = React.useEffect
+      var useRef = React.useRef
+
+      var features = (bs !== null && typeof bs === 'object' && Array.isArray(bs.features)) ? bs.features : []
+      var hasBadge = features.indexOf('badge') !== -1
+      var hasLifecycle = features.indexOf('tabLifecycle') !== -1
+      var hasPluginSettings = features.indexOf('pluginSettings') !== -1
+
+      /** React 桥接组件：ref 挂载纯 DOM 面板，scope 变化重挂，visible 性能门。 */
+      function CmdPadTab(props) {
+        var hostRef = useRef(null)
+        var panelRef = useRef(null)
+        var scope = props.scope || {}
+        var sessionId = typeof scope.sessionId === 'string' ? scope.sessionId : ''
+        var cwd = typeof scope.cwd === 'string' ? scope.cwd : ''
+        var scopeKey = sessionId + '\u0000' + cwd
+        useEffect(function () {
+          var host = hostRef.current
+          if (host === null) return undefined
+          var panel = createCmdPadPanel(ctx, {
+            sessionId: function () { return sessionId },
+            cwd: cwd === '' ? null : cwd,
+            addBtn: null,
+            toastRoot: host,
+            readSetting: hasPluginSettings ? function (key, def) {
+              try {
+                var snap = (props.store !== null && props.store !== undefined && typeof props.store.getSnapshot === 'function') ? props.store.getSnapshot() : undefined
+                var blob = snap !== undefined && snap.prefs !== undefined && snap.prefs.pluginSettings ? snap.prefs.pluginSettings['cmd-pad:pad'] : undefined
+                return (blob !== null && typeof blob === 'object' && blob[key] !== undefined) ? blob[key] : def
+              } catch (error) { return def }
+            } : function (key, def) { return def },
+            onDataLoaded: hasBadge ? function (count) { mainTabBadgeCount = count } : function () {},
+            onEscapeTrailing: function () {},
+          })
+          panelRef.current = panel
+          mainTabPanels[scopeKey] = panel
+          host.appendChild(panel.body)
+          panel.open()
+          return function () {
+            if (mainTabPanels[scopeKey] === panel) delete mainTabPanels[scopeKey]
+            panel.dispose()
+            panelRef.current = null
+          }
+        }, [sessionId, cwd])
+        useEffect(function () {
+          if (panelRef.current !== null) panelRef.current.setVisible(!!props.visible)
+        }, [!!props.visible])
+        return createElement('div', { className: 'cmd-pad-tab-host', ref: hostRef })
+      }
+
+      var descriptor = {
+        id: 'cmd-pad:pad',
+        title: '命令',
+        icon: function (size) { return createCmdPadIcon(createElement, size) },
+        order: 45,
+        single: true,
+        component: CmdPadTab,
+      }
+      if (hasBadge) {
+        // badge：廉价纯函数（每次 tab 栏渲染调用）；空库不显示（设计文档 §2.2）
+        descriptor.badge = function () {
+          return (mainTabBadgeCount !== null && mainTabBadgeCount > 0) ? mainTabBadgeCount : null
+        }
+      }
+      if (hasLifecycle) {
+        // onActivate：切回本 Tab 拉取最新命令库（多标签页/手改 yml 保鲜，§5.3）
+        descriptor.onActivate = function (tab, scope) {
+          var key = (scope && typeof scope.sessionId === 'string' ? scope.sessionId : '') + '\u0000' + (scope && typeof scope.cwd === 'string' ? scope.cwd : '')
+          var panel = mainTabPanels[key]
+          if (panel !== undefined) panel.refresh()
+        }
+      }
+      if (hasPluginSettings) {
+        // 插件设置（接入规范 §2.2 settings.pluginToggles）：持久化在 pluginSettings['cmd-pad:pad']
+        descriptor.settings = {
+          pluginToggles: [
+            { key: 'openToLastUsed', title: '打开时定位上次使用的分组', desc: '关闭后打开/激活 Tab 显示「全部」', type: 'switch' },
+          ],
+        }
+      }
+      ctx.effect(function () {
+        return bs.registerTab(descriptor)
+      })
+      return true
+    }
+
     function apply(ctx) {
       ctx.effect(() => {
         ensureStyle()
+        var bs = probeBetterSidebar(ctx)
+        if (bs) {
+          // 主形态（T06）：注册 Tab，不自建任何浮层（设计文档 §2.2 / 接入规范 §5.3）
+          if (registerMainTab(ctx, bs)) {
+            return function () { removeStyle() }
+          }
+          // require('react') 不可用 → 回退降级形态（TASK.md T06 依赖调整点）
+        }
 
+        // ── 降级形态：浮动图标 + 抽屉（T01/T03/T04）──
         var root = createRoot()
         var shell = createDrawer(closeDrawer)
         var drawer = shell.drawer
-        var addBtn = shell.addBtn
-        var searchInput = shell.searchInput
-        var searchCount = shell.searchCount
-        var groupsEl = shell.groupsEl
-        var contentEl = shell.contentEl
         drawer.style.width = loadDrawerWidth() + 'px'
         attachResize(drawer)
 
-        // ── T03/T04 状态 ──
-        var data = null               // { library, state, cwd, mtime }
-        var activeView = 'all'        // all | current-project | ungrouped | group:<name>
-        var searchQuery = ''          // 非空 = 搜索态
-        var moreExpanded = false
-        var toast = createToast(root)
-        var overlay = null            // 弹窗遮罩（表单/确认）
-        var undoState = null          // { snapshot, timer } 删除撤销（5s）
-        var pendingInitialView = false // 打开抽屉时待定的初始视图（上次使用分组）
-
-        function findCommand(cmdId) {
-          if (data === null || !Array.isArray(data.library.commands)) return null
-          for (var i = 0; i < data.library.commands.length; i++) {
-            if (data.library.commands[i].id === cmdId) return data.library.commands[i]
-          }
-          return null
-        }
-
-        function currentModel() {
-          return buildGroupModel(data.library, data.state, data.cwd)
-        }
-
-        function renderContentState(state) {
-          clearEl(contentEl)
-          if (state === 'loading') {
-            contentEl.appendChild(emptyEl('加载中…'))
-          } else if (state === 'error') {
-            contentEl.appendChild(emptyEl('加载失败，请检查 dsh web 服务'))
-            var row = el('div', 'cmd-pad-retry-row')
-            var retry = el('button', 'cmd-pad-btn', '重试')
-            retry.type = 'button'
-            retry.setAttribute('data-retry', '')
-            row.appendChild(retry)
-            contentEl.appendChild(row)
-          }
-        }
-
-        function renderContentView() {
-          clearEl(contentEl)
-          var commands = data.library.commands
-          if (searchQuery !== '') {
-            // 搜索态：平铺命中命令，命中数显示在搜索栏
-            var hits = []
-            for (var i = 0; i < commands.length; i++) {
-              if (searchMatches(commands[i], searchQuery).hit) hits.push(commands[i])
-            }
-            if (hits.length === 0) {
-              contentEl.appendChild(emptyEl('没有匹配的命令'))
-            } else {
-              for (var j = 0; j < hits.length; j++) contentEl.appendChild(cardEl(hits[j], searchQuery))
-            }
-            return
-          }
-          if (activeView === 'all') {
-            var model = currentModel()
-            var sections = allSections(model)
-            var any = false
-            for (var s = 0; s < sections.length; s++) {
-              var sec = sections[s]
-              var secCmds = commands.filter(function (c) { return (c.groups || []).indexOf(sec.name) !== -1 })
-              if (secCmds.length === 0) continue
-              any = true
-              contentEl.appendChild(sectionEl(sec.display, secCmds.length, secCmds, null))
-            }
-            if (model.hasUngrouped) {
-              var un = commands.filter(function (c) { return !c.groups || c.groups.length === 0 })
-              if (un.length > 0) {
-                any = true
-                contentEl.appendChild(sectionEl('未分组', un.length, un, null))
-              }
-            }
-            if (!any) contentEl.appendChild(emptyEl('还没有命令，可手改 commands.yml 添加'))
-            return
-          }
-          var cmds = commandsForView(commands, activeView, data.cwd)
-          if (cmds.length === 0) {
-            if (activeView === 'current-project') contentEl.appendChild(emptyEl('当前项目还没有命令'))
-            else if (activeView === 'ungrouped') contentEl.appendChild(emptyEl('没有未分组的命令'))
-            else contentEl.appendChild(emptyEl('该分组还没有命令'))
-            return
-          }
-          for (var k = 0; k < cmds.length; k++) contentEl.appendChild(cardEl(cmds[k], null))
-        }
-
-        function renderGroups() {
-          clearEl(groupsEl)
-          if (data === null) return
-          var model = currentModel()
-          // 用户定稿（调整记录 #17）：不显示「上次使用」slot 标签，打开抽屉直接定位该视图
-          groupsEl.appendChild(groupRow(null, '全部', null, 'all', activeView === 'all'))
-          if (model.cwd) {
-            var cwdDisplay = model.displayNames[model.cwd] || pathBase(model.cwd)
-            groupsEl.appendChild(groupRow('项目：', cwdDisplay, null, 'current-project', activeView === 'current-project'))
-          }
-          if (model.hasUngrouped) {
-            groupsEl.appendChild(groupRow(null, '未分组', null, 'ungrouped', activeView === 'ungrouped'))
-          }
-          for (var i = 0; i < model.pinnedCustom.length; i++) {
-            var pc = model.pinnedCustom[i]
-            groupsEl.appendChild(groupRow(null, pc, model.countByGroup[pc], 'group:' + pc, activeView === 'group:' + pc))
-          }
-          if (model.moreCount > 0) {
-            groupsEl.appendChild(moreToggle(model.moreCount, moreExpanded))
-            if (moreExpanded) groupsEl.appendChild(moreBody(model, activeView))
-          }
-        }
-
-        function renderAll() {
-          if (data === null) return
-          var model = currentModel()
-          if (!isValidView(activeView, model)) {
-            activeView = model.lastUsed !== null ? model.lastUsed.id : 'all'
-          }
-          renderGroups()
-          renderContentView()
-          updateSearchCount()
-        }
-
-        function updateSearchCount() {
-          if (searchQuery === '') {
-            searchCount.textContent = ''
-            return
-          }
-          if (data === null) return
-          var n = 0
-          var commands = data.library.commands
-          for (var i = 0; i < commands.length; i++) {
-            if (searchMatches(commands[i], searchQuery).hit) n++
-          }
-          searchCount.textContent = '命中 ' + n + ' 条'
-        }
-
-        function refreshData() {
-          loadState('loading')
-          renderContentState('loading')
-          clearEl(groupsEl)
-          var p
-          try {
-            p = loadLibrary(ctx)
-          } catch (error) {
-            p = Promise.reject(error)
-          }
-          p.then(function (payload) {
-            data = {
-              library: (payload !== null && typeof payload === 'object' && payload.library) ? payload.library : { commands: [] },
-              state: (payload !== null && typeof payload === 'object' && payload.state) ? payload.state : {},
-              cwd: (payload !== null && typeof payload === 'object' && typeof payload.cwd === 'string' && payload.cwd !== '') ? payload.cwd : null,
-              mtime: payload !== null ? payload.mtime : null,
-            }
-            loadState('ready')
-            var model = currentModel()
-            if (pendingInitialView) {
-              // 打开抽屉：初始视图 = 上次使用的分组（§3.4 语义），失效回退「全部」
-              pendingInitialView = false
-              activeView = (model.lastUsed !== null && isValidView(model.lastUsed.id, model)) ? model.lastUsed.id : 'all'
-            } else if (!isValidView(activeView, model)) {
-              activeView = model.lastUsed !== null ? model.lastUsed.id : 'all'
-            }
-            renderAll()
-          }).catch(function () {
-            loadState('error')
-            renderContentState('error')
-          })
-        }
-
-        function loadState(s) { /* 预留：如需加载态门控可扩展 */ }
-
-        function selectView(viewId) {
-          searchQuery = ''
-          searchInput.value = ''
-          activeView = viewId
-          renderAll()
-        }
-
-        function toggleMore() {
-          moreExpanded = !moreExpanded
-          renderGroups()
-        }
-
-        function clearSearch() {
-          searchQuery = ''
-          searchInput.value = ''
-          renderAll()
-        }
-
-        function focusSearch() {
-          try {
-            if (typeof searchInput.focus === 'function') searchInput.focus()
-          } catch (error) { /* 忽略 */ }
-        }
-
-        /**
-         * 复制语境下的 lastUsed 视图（功能文档 §3.4）：
-         * 「全部」/「未分组」视图 → 命令第一个所属分组（'all' 不作为 lastUsed 存储）。
-         */
-        function viewIdForLastUsed(cmd) {
-          var viewId = activeView
-          if (viewId === 'all' || viewId === 'ungrouped') {
-            var firstGroup = (cmd.groups !== null && Array.isArray(cmd.groups) && cmd.groups.length > 0) ? cmd.groups[0] : null
-            if (firstGroup !== null) viewId = 'group:' + firstGroup
-          }
-          return viewId
-        }
-
-        /** 刷新「上次使用」slot（§3.4）：本地即时 + 远端持久化 + 重渲染。 */
-        function applyLastUsed(cmd) {
-          var viewId = viewIdForLastUsed(cmd)
-          data.state.lastUsedViewId = viewId
-          if (data.state.viewLastUsedAt === null || typeof data.state.viewLastUsedAt !== 'object') data.state.viewLastUsedAt = {}
-          data.state.viewLastUsedAt[viewId] = Date.now()
-          persistLastUsed(viewId)
-          renderAll()
-        }
-
-        function onCopyCommand(cmdId, anchorEl) {
-          if (cmdId === null) return
-          var cmd = findCommand(cmdId)
-          if (cmd === null || typeof cmd.cmd !== 'string') return
-          copyText(cmd.cmd, function (ok) {
-            if (!ok) {
-              toast('复制失败', 'error', null, null, anchorEl)
-              return
-            }
-            toast('已复制', null, null, null, anchorEl)
-            // 刷新「上次使用」slot（功能文档 §3.4）
-            applyLastUsed(cmd)
-          })
-        }
-
-        // ── T04：写操作（添加/编辑/删除/重命名/常驻 + 撤销）──
-
-        function persistLibrary(library, onDone) {
-          var p
-          try {
-            p = window.fetch('/cmd-pad/api/library', {
-              method: 'PUT',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ library: library }),
-            }).then(function (res) {
-              if (!res.ok) throw new Error('library put failed: ' + res.status)
-              return res.json()
-            })
-          } catch (error) {
-            p = Promise.reject(error)
-          }
-          p.then(function () { onDone(true) }, function () { onDone(false) })
-        }
-
-        function persistState(patch) {
-          try {
-            window.fetch('/cmd-pad/api/state', {
-              method: 'PUT',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify(patch),
-            }).catch(function () {})
-          } catch (error) { /* 静默 */ }
-        }
-
-        function showModal(node) {
-          if (overlay === null) {
-            overlay = el('div', 'cmd-pad-overlay')
-            document.body.appendChild(overlay)
-          }
-          clearEl(overlay)
-          overlay.appendChild(node)
-          overlay.style.display = 'flex'
-        }
-
-        function hideModal() {
-          if (overlay !== null) {
-            overlay.style.display = 'none'
-            clearEl(overlay)
-          }
-        }
-
-        function modalOpen() {
-          return overlay !== null && overlay.style.display === 'flex'
-        }
-
-        function displayNameOf(groupName) {
-          var model = currentModel()
-          return model.displayNames[groupName] || groupName
-        }
-
-        /** 全部分组名（含无命令的常驻分组），用于重命名冲突检测。 */
-        function allGroupNames() {
-          var model = currentModel()
-          var names = {}
-          for (var k in model.groupSet) {
-            if (Object.prototype.hasOwnProperty.call(model.groupSet, k)) names[k] = true
-          }
-          var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
-          for (var i = 0; i < pinned.length; i++) {
-            if (!names[pinned[i]]) names[pinned[i]] = true
-          }
-          return names
-        }
-
-        /** 表单分组选项：自定义（常驻在前，含无命令常驻）→ 项目（当前项目 → 其他项目）。 */
-        function groupOptions() {
-          var model = currentModel()
-          var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
-          var seen = {}
-          var opts = []
-          var customOrder = model.pinnedCustom.concat(model.unpinnedCustom)
-          for (var i = 0; i < pinned.length; i++) {
-            var pg = pinned[i]
-            if (!isProjectGroup(pg) && customOrder.indexOf(pg) === -1) customOrder.push(pg)
-          }
-          for (var j = 0; j < customOrder.length; j++) {
-            var cg = customOrder[j]
-            if (seen[cg]) continue
-            seen[cg] = true
-            opts.push({ name: cg, display: cg, pinned: pinned.indexOf(cg) !== -1 })
-          }
-          var projs = []
-          if (model.cwd) projs.push(model.cwd)
-          for (var k = 0; k < model.otherProjects.length; k++) projs.push(model.otherProjects[k])
-          for (var m = 0; m < projs.length; m++) {
-            var pp = projs[m]
-            if (seen[pp]) continue
-            seen[pp] = true
-            opts.push({ name: pp, display: model.displayNames[pp] || pathBase(pp), pinned: false })
-          }
-          return opts
-        }
-
-        function openAddForm() {
-          var model = currentModel()
-          var checkedSet = {}
-          var defs = defaultCheckedGroups(activeView, model, data.state, data.cwd)
-          for (var i = 0; i < defs.length; i++) checkedSet[defs[i]] = true
-          showModal(buildFormModal({
-            mode: 'add',
-            groupOptions: groupOptions(),
-            checkedSet: checkedSet,
-            toast: toast,
-            onCancel: hideModal,
-            onSubmit: function (payload) { submitCommand(payload, null) },
-          }))
-        }
-
-        function openEditForm(cmdId) {
-          var cmd = findCommand(cmdId)
-          if (cmd === null) return
-          var checkedSet = {}
-          var groups = cmd.groups || []
-          for (var i = 0; i < groups.length; i++) checkedSet[groups[i]] = true
-          showModal(buildFormModal({
-            mode: 'edit',
-            cmd: cmd,
-            groupOptions: groupOptions(),
-            checkedSet: checkedSet,
-            toast: toast,
-            onCancel: hideModal,
-            onSubmit: function (payload) { submitCommand(payload, cmdId) },
-          }))
-        }
-
-        function submitCommand(payload, editId) {
-          var commands = data.library.commands
-          var next
-          if (editId !== null) {
-            next = commands.map(function (c) { return c.id === editId ? Object.assign({}, c, payload) : c })
-          } else {
-            next = commands.concat([Object.assign({ id: generateCommandId(payload.title) }, payload)])
-          }
-          persistLibrary(Object.assign({}, data.library, { commands: next }), function (ok) {
-            if (!ok) {
-              toast('保存失败', 'error')
-              return
-            }
-            data.library = Object.assign({}, data.library, { commands: next })
-            hideModal()
-            renderAll()
-            toast(editId !== null ? '已保存' : '已添加')
-          })
-        }
-
-        /** 删除/重命名等结构变更：保存快照 → PUT → 渲染 + 5s 可撤销。 */
-        function mutateLibrary(transform, message) {
-          var snapshot = JSON.parse(JSON.stringify(data.library))
-          var next = transform(snapshot)
-          persistLibrary(next, function (ok) {
-            if (!ok) {
-              toast('保存失败', 'error')
-              return
-            }
-            data.library = next
-            armUndo(snapshot, message)
-            renderAll()
-          })
-        }
-
-        /** 5 秒内可撤销（Toast 带「撤销」操作）。 */
-        function armUndo(snapshot, message) {
-          if (undoState !== null && undoState.timer !== null) clearTimeout(undoState.timer)
-          var timer = setTimeout(function () {
-            if (undoState !== null && undoState.timer === timer) undoState = null
-          }, 5000)
-          undoState = { snapshot: snapshot, timer: timer }
-          toast(message + '（5 秒内可撤销）', null, '撤销', function () {
-            if (undoState === null) return
-            clearTimeout(undoState.timer)
-            var snap = undoState.snapshot
-            undoState = null
-            persistLibrary(snap, function (ok) {
-              if (!ok) {
-                toast('撤销失败', 'error')
-                return
-              }
-              data.library = snap
-              renderAll()
-              toast('已撤销')
-            })
-          })
-        }
-
-        /** 命令删除（设计文档 §3.5 语境语义：解关联 vs 彻底删除 + 确认）。 */
-        function requestDeleteCommand(cmdId) {
-          var cmd = findCommand(cmdId)
-          if (cmd === null) return
-          var plan = deletionPlan(cmd, activeView)
-          if (plan.mode === 'unlink') {
-            // 仅解除当前分组关联（静默）
-            mutateLibrary(function (lib) {
-              return Object.assign({}, lib, { commands: lib.commands.map(function (c) {
-                if (c.id !== cmdId) return c
-                return Object.assign({}, c, { groups: c.groups.filter(function (g) { return g !== plan.group }) })
-              }) })
-            }, '已从「' + displayNameOf(plan.group) + '」解关联')
-            return
-          }
-          showModal(buildConfirmModal({
-            title: '删除命令',
-            message: '确定彻底删除「' + cmd.title + '」？\n删除后 5 秒内可撤销。',
-            danger: false,
-            okLabel: '删除',
-            onCancel: hideModal,
-            onConfirm: function () {
-              hideModal()
-              mutateLibrary(function (lib) {
-                return Object.assign({}, lib, { commands: lib.commands.filter(function (c) { return c.id !== cmdId }) })
-              }, '已删除')
-            },
-          }))
-        }
-
-        /** 分组删除（右键）：确认弹窗列出影响（N 解关联 / M 彻底删除）。 */
-        function requestDeleteGroup(name) {
-          var plan = groupDeletionPlan(name, data.library)
-          var message = '删除分组「' + name + '」：\n' +
-            plan.affected.length + ' 条命令解除关联，其中 ' + plan.deletedOnly.length + ' 条仅此分组的将彻底删除。\n删除后 5 秒内可撤销。'
-          showModal(buildConfirmModal({
-            title: '删除分组',
-            message: message,
-            danger: plan.deletedOnly.length > 0,
-            okLabel: '删除',
-            onCancel: hideModal,
-            onConfirm: function () {
-              hideModal()
-              mutateLibrary(function (lib) {
-                return Object.assign({}, lib, { commands: lib.commands.map(function (c) {
-                  var groups = c.groups || []
-                  if (groups.indexOf(name) === -1) return c
-                  var rest = groups.filter(function (g) { return g !== name })
-                  return rest.length === 0 ? null : Object.assign({}, c, { groups: rest })
-                }).filter(Boolean) })
-              }, '分组已删除')
-            },
-          }))
-        }
-
-        /** 分组重命名（仅自定义分组）：级联更新 + 冲突拒绝（弹窗保留可改）。 */
-        function requestRenameGroup(name) {
-          if (isProjectGroup(name)) return
-          showModal(buildRenameModal(name, hideModal, function (newName) {
-            var result = renameGroup(data.library, name, newName, allGroupNames())
-            if (!result.ok) {
-              toast(result.reason, 'error')
-              return
-            }
-            hideModal()
-            mutateLibrary(function () { return result.library }, '分组已重命名')
-            var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
-            if (pinned.indexOf(name) !== -1) {
-              var nextPinned = pinned.map(function (g) { return g === name ? newName : g })
-              data.state.pinnedGroups = nextPinned
-              persistState({ pinnedGroups: nextPinned })
-            }
-          }))
-        }
-
-        /** 常驻切换（右键分组项）：state.pinnedGroups 持久化 + 侧栏重排。 */
-        function toggleGroupPinned(name) {
-          var next = togglePinned(data.state.pinnedGroups, name)
-          data.state.pinnedGroups = next
-          persistState({ pinnedGroups: next })
-          renderAll()
-        }
-
-        // ── 事件委托（一次绑定，随重渲染复用）──
-        addBtn.addEventListener('click', function () {
-          if (data === null) return
-          openAddForm()
+        var panel = createCmdPadPanel(ctx, {
+          shell: shell,
+          sessionId: function () { return getCurrentSessionId(ctx) },
+          cwd: null,
+          addBtn: shell.addBtn,
+          toastRoot: root,
+          onEscapeTrailing: closeDrawer,
+          isPanelActive: function () { return drawer.getAttribute('data-open') === 'true' },
+          onDataLoaded: function () {},
+          readSetting: function (key, def) { return def },
         })
-
-        groupsEl.addEventListener('click', function (event) {
-          var target = event.target || groupsEl
-          var moreBtn = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-more-toggle') !== null })
-          if (moreBtn !== null) {
-            toggleMore()
-            return
-          }
-          var row = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-view-id') !== null })
-          if (row !== null) selectView(row.getAttribute('data-view-id'))
-        })
-
-        // 分组项右键（自定义分组：设为常驻/取消常驻、重命名、删除；项目分组无操作）
-        groupsEl.addEventListener('contextmenu', function (event) {
-          var target = event.target || groupsEl
-          if (typeof event.preventDefault === 'function') event.preventDefault()
-          var row = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-view-id') !== null })
-          if (row === null) return
-          var viewId = row.getAttribute('data-view-id')
-          if (viewId.slice(0, 6) !== 'group:') return
-          var name = viewId.slice(6)
-          if (isProjectGroup(name)) return // §3.1 项目分组由系统管理，无右键操作
-          var pinned = (Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []).indexOf(name) !== -1
-          openContextMenu(event.clientX || 0, event.clientY || 0, [
-            { label: pinned ? '取消常驻' : '设为常驻', onClick: function () { toggleGroupPinned(name) } },
-            { label: '重命名', onClick: function () { requestRenameGroup(name) } },
-            { label: '删除', danger: true, onClick: function () { requestDeleteGroup(name) } },
-          ])
-        })
-
-        contentEl.addEventListener('click', function (event) {
-          var target = event.target || contentEl
-          var retry = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-retry') !== null })
-          if (retry !== null) {
-            refreshData()
-            return
-          }
-          var copyEl = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-copy-cmd') !== null })
-          if (copyEl !== null) {
-            var card = closestUp(copyEl, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
-            // Toast 锚定到复制按钮/命令块左侧（用户定稿）
-            onCopyCommand(card !== null ? card.getAttribute('data-cmd-id') : null, copyEl)
-          }
-        })
-
-        // 卡片右键（复制 / 编辑 / 删除）
-        contentEl.addEventListener('contextmenu', function (event) {
-          var target = event.target || contentEl
-          if (typeof event.preventDefault === 'function') event.preventDefault()
-          var card = closestUp(target, function (n) { return n.getAttribute !== undefined && n.getAttribute('data-cmd-id') !== null })
-          if (card === null) return
-          var cmdId = card.getAttribute('data-cmd-id')
-          openContextMenu(event.clientX || 0, event.clientY || 0, [
-            { label: '复制', onClick: function () { onCopyCommand(cmdId) } },
-            { label: '编辑', onClick: function () { openEditForm(cmdId) } },
-            { label: '删除', danger: true, onClick: function () { requestDeleteCommand(cmdId) } },
-          ])
-        })
-
-        searchInput.addEventListener('input', function () {
-          searchQuery = searchInput.value || ''
-          renderContentView()
-          updateSearchCount()
-        })
-
-        // 清空按钮
-        var clearBtn = drawer.querySelector('.cmd-pad-search-clear')
-        if (clearBtn !== null) {
-          clearBtn.addEventListener('click', function () {
-            if (searchQuery !== '') clearSearch()
-            else focusSearch()
-          })
-        }
 
         function openDrawer() {
           drawer.setAttribute('data-open', 'true')
           applyClusterOffset(drawer)
           pushLayoutForDrawer(drawer, true)
           window.addEventListener('resize', onResize)
-          pendingInitialView = true // 打开即定位到上次使用的分组（调整记录 #17）
-          refreshData() // 每次打开拉取最新（设计文档 §5.3 多标签页/手改 yml 保鲜）
+          panel.open() // 打开即定位上次使用分组 + 拉取最新命令库（§5.3 保鲜）
         }
 
         function closeDrawer() {
@@ -2453,38 +2755,6 @@ window.__ModuleLoader__.load({
           if (open) closeDrawer()
           else openDrawer()
         })
-        var onKeydown = function onKeydown(event) {
-          if (event.key === 'Escape') {
-            // Esc 链（功能文档 §4.4）：弹层 → 右键菜单 → 清空搜索 → 收起抽屉
-            if (modalOpen()) {
-              hideModal()
-              if (typeof event.preventDefault === 'function') event.preventDefault()
-              return
-            }
-            if (contextMenuEl !== null) {
-              closeContextMenu()
-              if (typeof event.preventDefault === 'function') event.preventDefault()
-              return
-            }
-            if (drawer.getAttribute('data-open') !== 'true') return
-            if (searchQuery !== '') {
-              clearSearch()
-              if (typeof event.preventDefault === 'function') event.preventDefault()
-              return
-            }
-            closeDrawer()
-            return
-          }
-          if (event.key === '/' && drawer.getAttribute('data-open') === 'true') {
-            var target = event.target
-            var tag = target !== null && target !== undefined ? target.tagName : undefined
-            if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !(target !== null && target.isContentEditable)) {
-              if (typeof event.preventDefault === 'function') event.preventDefault()
-              focusSearch()
-            }
-          }
-        }
-        document.addEventListener('keydown', onKeydown)
 
         root.appendChild(fab)
         root.appendChild(drawer)
@@ -2492,17 +2762,13 @@ window.__ModuleLoader__.load({
         applyClusterOffset(drawer)
 
         return function dispose() {
-          document.removeEventListener('keydown', onKeydown)
           window.removeEventListener('resize', onResize)
-          if (undoState !== null && undoState.timer !== null) clearTimeout(undoState.timer)
-          undoState = null
-          closeContextMenu()
-          hideModal()
+          panel.dispose()
           pushLayoutForDrawer(drawer, false)
           if (root.parentNode !== null) root.parentNode.removeChild(root)
           removeStyle()
         }
-      }, 'dsh-cmd-pad: 降级形态浮动图标 + 抽屉')
+      }, 'dsh-cmd-pad: 主形态 Tab / 降级浮动图标 + 抽屉')
     }
 
     exports.apply = apply
@@ -2530,6 +2796,7 @@ window.__ModuleLoader__.load({
       groupDeletionPlan: groupDeletionPlan,
       renameGroup: renameGroup,
       togglePinned: togglePinned,
+      probeBetterSidebar: probeBetterSidebar,
     }
     return module.exports
   },
