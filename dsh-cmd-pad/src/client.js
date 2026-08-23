@@ -226,6 +226,15 @@ window.__ModuleLoader__.load({
       '  flex:none;',
       '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
       '}',
+      // 输入框 + 内部 ✕ 的组合容器：✕ 以 absolute 悬在输入框内部右侧（调整记录 #31）
+      '.cmd-pad-search-field{',
+      '  flex:1;',
+      '  min-width:0;',
+      '  position:relative;',
+      '  display:flex;',
+      '  align-items:center;',
+      '  -webkit-app-region:no-drag;',
+      '}',
       '.cmd-pad-search-input{',
       '  flex:1;',
       '  min-width:0;',
@@ -234,7 +243,7 @@ window.__ModuleLoader__.load({
       '  background:var(--dsw-alias-bg-base,var(--cp-bg-base,#1c1d21));',
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '  font-size:12px;',
-      '  padding:5px 8px;',
+      '  padding:5px 28px 5px 8px;', // 右侧留出内部 ✕ 的空间（调整记录 #31）
       '  border-radius:6px;',
       // 中性黑浅投影：让搜索框在行内略微浮起、更显眼（调整记录 #30，用户反馈「不够显眼，加一层小小的阴影，不要重」）
       '  box-shadow:0 1px 3px rgba(0,0,0,.15);',
@@ -250,7 +259,10 @@ window.__ModuleLoader__.load({
       '  white-space:nowrap;',
       '}',
       '.cmd-pad-search-clear{',
-      '  flex:none;',
+      '  position:absolute;', // 悬在输入框内部右侧（调整记录 #31，用户反馈「×号应该在搜索框里面的右侧」）
+      '  right:4px;',
+      '  top:50%;',
+      '  transform:translateY(-50%);',
       '  width:20px;',
       '  height:20px;',
       '  display:flex;',
@@ -1279,7 +1291,7 @@ window.__ModuleLoader__.load({
      * 返回 { body, searchInput, searchCount, groupsEl, contentEl, clearBtn }。
      */
     function createPanelBody(bodyClass) {
-      // 搜索栏（T03）：放大镜 + input + 计数 + 清空
+      // 搜索栏（T03）：放大镜 + 输入框（清空 ✕ 悬在输入框内部右侧，调整记录 #31）+ 计数
       var search = document.createElement('div')
       search.className = 'cmd-pad-search'
 
@@ -1287,16 +1299,16 @@ window.__ModuleLoader__.load({
       searchIcon.innerHTML = SEARCH_SVG
       search.appendChild(searchIcon)
 
+      // 输入框 + 内部右侧清空 ✕ 的组合（field 为 ✕ 的定位上下文）
+      var field = document.createElement('div')
+      field.className = 'cmd-pad-search-field'
+
       var searchInput = document.createElement('input')
       searchInput.type = 'text'
       searchInput.className = 'cmd-pad-search-input'
       searchInput.placeholder = '搜索命令（/）'
       searchInput.setAttribute('aria-label', '搜索命令')
-      search.appendChild(searchInput)
-
-      var searchCount = document.createElement('span')
-      searchCount.className = 'cmd-pad-search-count'
-      search.appendChild(searchCount)
+      field.appendChild(searchInput)
 
       var searchClear = document.createElement('button')
       searchClear.type = 'button'
@@ -1304,7 +1316,13 @@ window.__ModuleLoader__.load({
       searchClear.title = '清空搜索（Esc）'
       searchClear.setAttribute('aria-label', '清空搜索')
       searchClear.textContent = '\u2715'
-      search.appendChild(searchClear)
+      field.appendChild(searchClear)
+
+      search.appendChild(field)
+
+      var searchCount = document.createElement('span')
+      searchCount.className = 'cmd-pad-search-count'
+      search.appendChild(searchCount)
 
       // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）
       var groupsEl = document.createElement('div')
