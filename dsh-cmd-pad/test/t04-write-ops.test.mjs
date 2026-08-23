@@ -254,7 +254,8 @@ async function bootScene(opts = {}) {
     body,
     drawer,
     fab: find(body, '.cmd-pad-fab'),
-    addBtn: find(drawer, '.cmd-pad-add'),
+    addCmdBtn: find(drawer, '.cmd-pad-addcmd'),
+    groupAddBtn: find(drawer, '.cmd-pad-group-add'),
     groupsEl: find(drawer, '.cmd-pad-groups'),
     contentEl: find(drawer, '.cmd-pad-content'),
     searchInput: find(drawer, '.cmd-pad-search-input'),
@@ -272,6 +273,8 @@ async function bootScene(opts = {}) {
   }
   s.fab.listeners.click.forEach((fn) => fn())
   await tick()
+  // ＋ 新建分组按钮由 renderGroups 在数据加载后挂进分组条（渲染依赖），须在 tick 后取
+  s.groupAddBtn = find(drawer, '.cmd-pad-group-add')
   return s
 }
 
@@ -291,7 +294,11 @@ function clickGroup(s, viewId) {
 }
 
 function openAdd(s) {
-  s.addBtn.listeners.click.forEach((fn) => fn())
+  s.addCmdBtn.listeners.click.forEach((fn) => fn())
+}
+
+function openAddGroup(s) {
+  s.groupAddBtn.listeners.click.forEach((fn) => fn())
 }
 
 function modalEl(s) {
@@ -482,10 +489,19 @@ await check('D7 togglePinned：加入/移除/顺序保持', async () => {
 // E. DOM 渲染与交互
 // ════════════════════════════════════════════════════════════════════════
 
-await check('E1 顶栏有「+ 添加」入口', async () => {
+await check('E1 添加命令入口 = 分组条下方长条按钮；新建分组 = 分组栏右侧 ＋（调整记录 #33）', async () => {
   const s = await bootScene({})
-  assert.ok(s.addBtn !== null, '应有 + 添加按钮')
-  assert.strictEqual(s.addBtn.textContent, '+ 添加')
+  assert.ok(s.addCmdBtn !== null, '应有「添加命令」长条按钮')
+  assert.strictEqual(s.addCmdBtn.textContent, '添加命令')
+  assert.ok(s.groupAddBtn !== null, '应有「＋」新建分组按钮')
+  assert.strictEqual(s.groupAddBtn.textContent, '+')
+  // 长条按钮位于分组条与命令区之间；旧搜索行/顶栏「+ 添加」已移除
+  const body = s.drawer.children.find((c) => c.className === 'cmd-pad-drawer-body')
+  const classes = body.children.map((c) => c.className)
+  assert.deepStrictEqual(classes, ['cmd-pad-search', 'cmd-pad-groups', 'cmd-pad-addcmd', 'cmd-pad-content'], '搜索 → 分组条 → 添加命令 → 命令区')
+  assert.strictEqual(find(s.body, '.cmd-pad-add'), null, '不再有旧「+ 添加」按钮')
+  // ＋ 挂在分组条内（右侧）
+  assert.ok(s.groupsEl.children.includes(s.groupAddBtn), '＋ 位于分组条内')
 })
 
 await check('E2 分组视图点 + 添加 → 表单弹窗，默认勾选当前分组（含不常驻）', async () => {
@@ -543,6 +559,58 @@ await check('E5 新建分组：保存时自动创建并勾选', async () => {
   const lib = lastLibraryPut(s)
   const added = lib.commands.find((c) => c.title === '含新组')
   assert.ok(added.groups.includes('brand-new'), '新分组应自动创建并归属')
+})
+
+await check('E5b 新建分组（分组栏 ＋）：弹窗 → 输名创建 → 自动常驻 + state 持久化 + 空分组出现在分组条', async () => {
+  const s = await bootScene({})
+  openAddGroup(s)
+  const modal = modalEl(s)
+  assert.ok(modal !== null, '新建分组弹窗出现')
+  assert.strictEqual(find(modal, '.cmd-pad-modal-title').textContent, '新建分组')
+  const input = find(modal, '.cmd-pad-form-input')
+  input.value = '部署脚本'
+  clickModalButton(s, '创建')
+  await tick()
+  assert.strictEqual(modalEl(s), null, '创建后弹窗关闭')
+  // state 持久化（自动常驻）
+  const lastState = s.statePuts[s.statePuts.length - 1]
+  assert.ok(Array.isArray(lastState.pinnedGroups) && lastState.pinnedGroups.includes('部署脚本'), 'pinnedGroups 持久化新分组')
+  assert.deepStrictEqual(lastState.pinnedGroups, ['common', 'perf', '部署脚本'], '新分组追加在常驻列表末尾')
+  // 分组条出现该空分组（常驻空分组也显示）
+  const rows = collect(s.groupsEl, '.cmd-pad-group-row', []).map((r) => r.textContent)
+  assert.ok(rows.some((t) => t.includes('部署脚本')), '分组条出现新分组')
+  assert.strictEqual(find(s.body, '.cmd-pad-toast').textContent, '已创建分组「部署脚本」')
+})
+
+await check('E5c 新建分组校验：空名 / 重名 / 路径名拒绝；Esc 关闭', async () => {
+  const s = await bootScene({})
+  openAddGroup(s)
+  // 空名
+  clickModalButton(s, '创建')
+  assert.strictEqual(find(s.body, '.cmd-pad-toast').textContent, '分组名不能为空')
+  assert.ok(modalEl(s) !== null, '弹窗保留')
+  // 重名（SAMPLE 有 perf 分组）
+  let input = find(modalEl(s), '.cmd-pad-form-input')
+  input.value = 'perf'
+  clickModalButton(s, '创建')
+  assert.ok(find(s.body, '.cmd-pad-toast').textContent.includes('已存在'), `重名拒绝: ${find(s.body, '.cmd-pad-toast').textContent}`)
+  assert.ok(modalEl(s) !== null, '弹窗保留')
+  // 路径名
+  input.value = 'D:\\evil\\path'
+  clickModalButton(s, '创建')
+  assert.strictEqual(find(s.body, '.cmd-pad-toast').textContent, '分组名不能是路径')
+  assert.ok(modalEl(s) !== null, '弹窗保留')
+  // 回车键 = 创建（输入新名字后 Enter）
+  input.value = '回车创建'
+  const keydownFns = input.listeners.keydown || []
+  assert.ok(keydownFns.length > 0, '输入框绑定了回车提交')
+  keydownFns.forEach((fn) => fn({ key: 'Enter', preventDefault() {} }))
+  await tick()
+  assert.strictEqual(modalEl(s), null, '回车创建后弹窗关闭')
+  // Esc 再开一个 → 关闭
+  openAddGroup(s)
+  pressEsc(s)
+  assert.strictEqual(modalEl(s), null, 'Esc 关闭新建分组弹窗')
 })
 
 await check('E6 危险关键词：输入 rm → 提示 + 自动勾选危险', async () => {

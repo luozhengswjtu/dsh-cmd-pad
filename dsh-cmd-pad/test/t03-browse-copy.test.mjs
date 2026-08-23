@@ -839,11 +839,11 @@ await check('C7 布局结构：搜索 → 分组横条 → 命令区（上下结
   assert.ok(groupsBlock.includes('flex-wrap:wrap'), '分组区横向换行排列')
   const contentBlock = /\.cmd-pad-content\{([^}]*)\}/.exec(css)[1]
   assert.ok(contentBlock.includes('flex:1'), '命令区占满剩余高度')
-  // DOM 结构：search → groups → content（上下）
+  // DOM 结构：search → groups → addcmd → content（上下；调整记录 #33：分组条下方为「添加命令」长条按钮）
   const s = await bootScene({})
   const body = s.drawer.children.find((c) => c.className === 'cmd-pad-drawer-body')
   const classes = body.children.map((c) => c.className)
-  assert.deepStrictEqual(classes, ['cmd-pad-search', 'cmd-pad-groups', 'cmd-pad-content'], '搜索栏→分组区→命令区')
+  assert.deepStrictEqual(classes, ['cmd-pad-search', 'cmd-pad-groups', 'cmd-pad-addcmd', 'cmd-pad-content'], '搜索栏→分组区→添加命令→命令区')
   // 分组区不占用内容宽度（无左侧竖栏）
   assert.ok(!CLIENT_SRC.includes('cmd-pad-layout'), '不再有 layout 左右分栏容器')
 })

@@ -467,10 +467,12 @@ await check('N1 组件挂载：ref 挂纯 DOM 面板，内容区渲染（搜索/
   assert.ok(find(host, '.cmd-pad-groups') !== null, '分组条在场')
   const ids = cardIds(host)
   assert.deepStrictEqual(ids, ['top-mem'], '初始视图 = 上次使用分组 perf → 仅 top-mem')
-  // 内容区与抽屉同款：addBtn 自建在搜索行内
-  const addBtn = find(host, '.cmd-pad-add')
-  assert.ok(addBtn !== null, '主形态 + 添加按钮存在')
-  assert.ok(find(host, '.cmd-pad-search').children.includes(addBtn), 'addBtn 位于搜索行')
+  // 内容区与抽屉同款：添加命令 = 分组条下方长条按钮；新建分组 = 分组条内 ＋（调整记录 #33）
+  const addCmdBtn = find(host, '.cmd-pad-addcmd')
+  assert.ok(addCmdBtn !== null, '主形态添加命令按钮存在')
+  assert.strictEqual(addCmdBtn.textContent, '添加命令')
+  assert.ok(find(host, '.cmd-pad-group-add') !== null, '主形态 ＋ 新建分组按钮存在')
+  assert.ok(find(host, '.cmd-pad-groups').children.includes(find(host, '.cmd-pad-group-add')), '＋ 位于分组条内')
   // 复制交互可用（内容区等价）
   const copyBtn = find(host, '[data-copy-cmd]')
   assert.ok(copyBtn !== null, '复制按钮在场')
@@ -557,8 +559,8 @@ await check('N6 主形态 Esc 链：弹层 → 菜单 → 清空搜索（无抽�
   const { host } = mountTab(s, { scope: { sessionId: 's1', cwd: SAMPLE_CWD } })
   await tick()
   // 打开添加弹窗 → Esc 关闭
-  const addBtn = find(host, '.cmd-pad-add')
-  addBtn.listeners.click.forEach((fn) => fn())
+  const addCmdBtn = find(host, '.cmd-pad-addcmd')
+  addCmdBtn.listeners.click.forEach((fn) => fn())
   assert.ok(find(s.body, '.cmd-pad-modal') !== null, '弹窗出现')
   s.documentEvents.keydown.forEach((fn) => fn({ key: 'Escape', preventDefault() {} }))
   assert.strictEqual(find(s.body, '.cmd-pad-modal'), null, 'Esc 关闭弹窗')

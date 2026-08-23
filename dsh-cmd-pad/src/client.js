@@ -503,27 +503,48 @@ window.__ModuleLoader__.load({
       '.cmd-pad-toast[data-kind="error"]{',
       '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
       '}',
-      // ── T04：顶栏「+ 添加」按钮（纯文字）──
-      '.cmd-pad-add{',
-      '  border:none;',
+      // ── T04→#33：「添加命令」长条按钮（分组条下方，全宽；解耦自「+ 添加」，调整记录 #33）──
+      '.cmd-pad-addcmd{',
+      '  flex:none;',
+      '  display:flex;',
+      '  align-items:center;',
+      '  justify-content:center;',
+      '  margin:6px 10px 0;',
+      '  padding:6px 8px;',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
       '  background:transparent;',
       '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
       '  font-size:12px;',
-      '  line-height:1;',
-      '  padding:6px 8px;',
-      '  margin-right:2px;',
       '  border-radius:6px;',
       '  cursor:pointer;',
       '  -webkit-app-region:no-drag;',
       '}',
-      '.cmd-pad-add:hover{',
+      '.cmd-pad-addcmd:hover{',
       '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
-      // 主形态搜索行右端的「+ 添加」与搜索控件（清空 ✕ 等）拉开间距
-      // （调整记录 #29：仅 6px flex gap 太近 → 10px；#30 用户要求再远一些 → 16px，总间距 22px）
-      '.cmd-pad-search .cmd-pad-add{',
-      '  margin-left:16px;',
+      // ── T04→#33：「＋」新建分组（分组栏右侧，纯加号；调整记录 #33）──
+      '.cmd-pad-group-add{',
+      '  display:inline-flex;',
+      '  align-items:center;',
+      '  justify-content:center;',
+      '  min-width:22px;',
+      '  height:20px;',
+      '  padding:0 5px;',
+      '  margin-left:auto;', // 靠分组栏右缘（用户定稿：添加分组按钮在分组栏右侧）
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  background:transparent;',
+      '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
+      '  font-size:13px;',
+      '  line-height:1;',
+      '  border-radius:6px;',
+      '  cursor:pointer;',
+      '  user-select:none;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-group-add:hover{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
       // ── T04：弹窗（遮罩 + 模态；弹层配方视觉规范 §2）──
       '.cmd-pad-overlay{',
@@ -1326,9 +1347,25 @@ window.__ModuleLoader__.load({
       searchCount.className = 'cmd-pad-search-count'
       search.appendChild(searchCount)
 
-      // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）
+      // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构；调整记录 #33：分组条下方新增「添加命令」长条按钮）
       var groupsEl = document.createElement('div')
       groupsEl.className = 'cmd-pad-groups'
+
+      // 添加命令长条按钮（调整记录 #33：解耦「添加命令」与「添加分组」，独立全宽入口）
+      var addCmdBtn = document.createElement('button')
+      addCmdBtn.type = 'button'
+      addCmdBtn.className = 'cmd-pad-addcmd'
+      addCmdBtn.textContent = '添加命令'
+      addCmdBtn.title = '添加命令'
+      addCmdBtn.setAttribute('aria-label', '添加命令')
+
+      // 添加分组 ＋（调整记录 #33：分组栏右侧，独立建组入口；空组自动常驻才可见）
+      var groupAddBtn = document.createElement('button')
+      groupAddBtn.type = 'button'
+      groupAddBtn.className = 'cmd-pad-group-add'
+      groupAddBtn.textContent = '+'
+      groupAddBtn.title = '新建分组'
+      groupAddBtn.setAttribute('aria-label', '新建分组')
 
       var contentEl = document.createElement('div')
       contentEl.className = 'cmd-pad-content'
@@ -1337,14 +1374,17 @@ window.__ModuleLoader__.load({
       body.className = bodyClass || 'cmd-pad-drawer-body'
       body.appendChild(search)
       body.appendChild(groupsEl)
+      body.appendChild(addCmdBtn)
       body.appendChild(contentEl)
 
-      return { body: body, searchInput: searchInput, searchCount: searchCount, groupsEl: groupsEl, contentEl: contentEl, clearBtn: searchClear }
+      return { body: body, searchInput: searchInput, searchCount: searchCount, groupsEl: groupsEl, contentEl: contentEl, clearBtn: searchClear, addCmdBtn: addCmdBtn, groupAddBtn: groupAddBtn }
     }
 
     /**
-     * 抽屉外壳（T01）：head（标题 + + 添加 + ✕）+ 面板内容骨架。
-     * 返回 { drawer, addBtn, searchInput, searchCount, groupsEl, contentEl }。
+     * 抽屉外壳（T01）：head（标题 + ✕）+ 面板内容骨架。
+     * 调整记录 #33：顶栏不再放「+ 添加」——添加命令改为分组条下方的长条按钮（内容骨架内），
+     * 新建分组改为分组栏右侧的 ＋（内容骨架内）。
+     * 返回 { drawer, searchInput, searchCount, groupsEl, contentEl, clearBtn, addCmdBtn, groupAddBtn }。
      */
     function createDrawer(onClose) {
       var drawer = document.createElement('div')
@@ -1357,13 +1397,6 @@ window.__ModuleLoader__.load({
       var title = document.createElement('span')
       title.className = 'cmd-pad-drawer-title'
       title.textContent = '命令'
-
-      var addBtn = document.createElement('button')
-      addBtn.type = 'button'
-      addBtn.className = 'cmd-pad-add'
-      addBtn.textContent = '+ 添加'
-      addBtn.title = '添加命令'
-      addBtn.setAttribute('aria-label', '添加命令')
 
       var spacer = document.createElement('span')
       spacer.style.flex = '1'
@@ -1378,14 +1411,13 @@ window.__ModuleLoader__.load({
 
       head.appendChild(title)
       head.appendChild(spacer)
-      head.appendChild(addBtn)
       head.appendChild(close)
 
       var body = createPanelBody('cmd-pad-drawer-body')
 
       drawer.appendChild(head)
       drawer.appendChild(body.body)
-      return { drawer: drawer, addBtn: addBtn, searchInput: body.searchInput, searchCount: body.searchCount, groupsEl: body.groupsEl, contentEl: body.contentEl, clearBtn: body.clearBtn, body: body.body }
+      return { drawer: drawer, searchInput: body.searchInput, searchCount: body.searchCount, groupsEl: body.groupsEl, contentEl: body.contentEl, clearBtn: body.clearBtn, addCmdBtn: body.addCmdBtn, groupAddBtn: body.groupAddBtn, body: body.body }
     }
 
     // ── 分组行 / 上次 slot / 更多（T03 渲染）──
@@ -1699,6 +1731,33 @@ window.__ModuleLoader__.load({
       okBtn.type = 'button'
       cancelBtn.addEventListener('click', function () { if (typeof onCancel === 'function') onCancel() })
       okBtn.addEventListener('click', function () { if (typeof onConfirm === 'function') onConfirm() })
+      actions.appendChild(cancelBtn)
+      actions.appendChild(okBtn)
+      modal.appendChild(actions)
+      return modal
+    }
+    /** 新建分组弹窗（调整记录 #33：分组与命令解耦，独立建组入口）。opts: { onCancel, onConfirm(name) }。 */
+    function buildAddGroupModal(onCancel, onConfirm) {
+      var modal = el('div', 'cmd-pad-modal')
+      modal.appendChild(el('div', 'cmd-pad-modal-title', '新建分组'))
+      modal.appendChild(el('div', 'cmd-pad-modal-message', '新分组会自动设为常驻（空分组也显示在分组栏）。输入分组名：'))
+      var input = el('input', 'cmd-pad-form-input')
+      input.type = 'text'
+      input.placeholder = '分组名'
+      modal.appendChild(input)
+      var actions = el('div', 'cmd-pad-form-actions')
+      var cancelBtn = el('button', 'cmd-pad-btn', '取消')
+      cancelBtn.type = 'button'
+      var okBtn = el('button', 'cmd-pad-btn-primary', '创建')
+      okBtn.type = 'button'
+      cancelBtn.addEventListener('click', function () { onCancel() })
+      okBtn.addEventListener('click', function () { onConfirm(input.value) })
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          if (typeof event.preventDefault === 'function') event.preventDefault()
+          onConfirm(input.value)
+        }
+      })
       actions.appendChild(cancelBtn)
       actions.appendChild(okBtn)
       modal.appendChild(actions)
@@ -2290,17 +2349,18 @@ window.__ModuleLoader__.load({
 
     /**
      * 创建 cmd-pad 内容区面板。opts：
-     *  - shell: { body, searchInput, searchCount, groupsEl, contentEl, clearBtn } | null
+     *  - shell: { body, searchInput, searchCount, groupsEl, contentEl, clearBtn, addCmdBtn, groupAddBtn } | null
      *           骨架复用（降级形态用 createDrawer 已建好的；null = 自建，供主形态挂载）
      *  - sessionId: () => string     会话 id（降级探测 / 主形态 scope.sessionId）
      *  - cwd: string | null          主形态 scope.cwd 可直接给；降级传 null 由 host 解析
-     *  - addBtn: Element | null      「+ 添加」按钮（降级用抽屉 head 的；null = 自建放搜索行右侧）
      *  - toastRoot: Element          Toast 挂载容器
      *  - readSetting(key, def)       插件设置读取（主形态 prefs.pluginSettings；降级返回默认）
      *  - onDataLoaded(count)         数据加载成功后回调（主形态 badge 缓存）
      *  - isPanelActive: () => bool   面板激活判定（Esc 链 / `/` 聚焦搜索；降级抽屉 open / 主形态 visible）
      *  - onEscapeTrailing: () => void Esc 链末级（降级收起抽屉；主形态 no-op）
      * 返回 { body, open, refresh, setVisible, dispose }。
+     * 调整记录 #33：「+ 添加」入口移除——添加命令 = 骨架内 addCmdBtn 长条按钮，
+     * 新建分组 = 分组栏右侧 groupAddBtn（两者均由 createPanelBody 创建，两形态一致）。
      */
     function createCmdPadPanel(ctx, opts) {
       opts = opts || {}
@@ -2310,6 +2370,8 @@ window.__ModuleLoader__.load({
       var groupsEl
       var contentEl
       var clearBtn
+      var addCmdBtn
+      var groupAddBtn
       if (opts.shell !== null && opts.shell !== undefined) {
         body = opts.shell.body
         searchInput = opts.shell.searchInput
@@ -2317,6 +2379,8 @@ window.__ModuleLoader__.load({
         groupsEl = opts.shell.groupsEl
         contentEl = opts.shell.contentEl
         clearBtn = opts.shell.clearBtn || null
+        addCmdBtn = opts.shell.addCmdBtn || null
+        groupAddBtn = opts.shell.groupAddBtn || null
       } else {
         var built = createPanelBody('cmd-pad-drawer-body')
         body = built.body
@@ -2325,18 +2389,8 @@ window.__ModuleLoader__.load({
         groupsEl = built.groupsEl
         contentEl = built.contentEl
         clearBtn = built.clearBtn
-      }
-
-      // 「+ 添加」：降级用抽屉 head 传入的元素；主形态自建并放搜索行右端
-      var addBtn = opts.addBtn
-      if (addBtn === null || addBtn === undefined) {
-        addBtn = document.createElement('button')
-        addBtn.type = 'button'
-        addBtn.className = 'cmd-pad-add'
-        addBtn.textContent = '+ 添加'
-        addBtn.title = '添加命令'
-        addBtn.setAttribute('aria-label', '添加命令')
-        body.querySelector('.cmd-pad-search').appendChild(addBtn)
+        addCmdBtn = built.addCmdBtn
+        groupAddBtn = built.groupAddBtn
       }
 
       // ── T03/T04 状态 ──
@@ -2511,6 +2565,8 @@ window.__ModuleLoader__.load({
           groupsEl.appendChild(moreToggle(model.moreCount, moreExpanded))
           if (moreExpanded) groupsEl.appendChild(moreBody(model, activeView))
         }
+        // 调整记录 #33：分组栏右侧「＋」新建分组（随分组条重渲染保持在场）
+        if (groupAddBtn !== null) groupsEl.appendChild(groupAddBtn)
       }
 
       /** T06 visible 性能门：不可见时挂起重渲染，恢复可见时补渲染。 */
@@ -2794,6 +2850,26 @@ window.__ModuleLoader__.load({
         }))
       }
 
+      /** 新建分组（调整记录 #33）：分组栏右侧 ＋ → 弹窗输名 → 校验 → 自动设为常驻（空组可见）。 */
+      function openAddGroupForm() {
+        showModal(buildAddGroupModal(hideModal, function (name) { submitGroup(name) }))
+      }
+
+      function submitGroup(name) {
+        name = (name || '').trim()
+        if (name === '') { toast('分组名不能为空', 'error'); return }
+        if (/[\r\n]/.test(name)) { toast('分组名不能包含换行', 'error'); return }
+        if (isProjectGroup(name)) { toast('分组名不能是路径', 'error'); return }
+        if (allGroupNames()[name]) { toast('分组「' + name + '」已存在', 'error'); return }
+        var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups.slice() : []
+        if (pinned.indexOf(name) === -1) pinned.push(name)
+        data.state.pinnedGroups = pinned
+        persistState({ pinnedGroups: pinned })
+        hideModal()
+        renderAll()
+        toast('已创建分组「' + name + '」')
+      }
+
       function openEditForm(cmdId) {
         var cmd = findCommand(cmdId)
         if (cmd === null) return
@@ -2954,10 +3030,19 @@ window.__ModuleLoader__.load({
       }
 
       // ── 事件委托（一次绑定，随重渲染复用）──
-      addBtn.addEventListener('click', function () {
-        if (data === null) return
-        openAddForm()
-      })
+      // 调整记录 #33：「添加命令」= 分组条下方长条按钮；「新建分组」= 分组栏右侧 ＋
+      if (addCmdBtn !== null) {
+        addCmdBtn.addEventListener('click', function () {
+          if (data === null) return
+          openAddForm()
+        })
+      }
+      if (groupAddBtn !== null) {
+        groupAddBtn.addEventListener('click', function () {
+          if (data === null) return
+          openAddGroupForm()
+        })
+      }
 
       groupsEl.addEventListener('click', function (event) {
         var target = event.target || groupsEl
@@ -3181,7 +3266,6 @@ window.__ModuleLoader__.load({
           var panel = createCmdPadPanel(ctx, {
             sessionId: function () { return sessionId },
             cwd: cwd === '' ? null : cwd,
-            addBtn: null,
             toastRoot: host,
             // T07：主形态运行通道（终端直写）——传 better-sidebar 服务 + scope 访问器
             betterSidebar: bs,
@@ -3265,7 +3349,6 @@ window.__ModuleLoader__.load({
           shell: shell,
           sessionId: function () { return getCurrentSessionId(ctx) },
           cwd: null,
-          addBtn: shell.addBtn,
           toastRoot: root,
           onEscapeTrailing: closeDrawer,
           isPanelActive: function () { return drawer.getAttribute('data-open') === 'true' },
