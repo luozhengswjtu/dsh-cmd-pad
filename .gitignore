@@ -1,0 +1,11 @@
+# 上游只读参考快照，禁止纳入本仓库（只保留本插件自己的代码）
+DSH-better-sidebar-main/
+
+# Node / 构建产物
+node_modules/
+dist/
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
