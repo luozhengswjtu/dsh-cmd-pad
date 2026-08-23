@@ -502,6 +502,11 @@ window.__ModuleLoader__.load({
       '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
+      // 主形态搜索行右端的「+ 添加」与搜索控件（清空 ✕ 等）拉开间距
+      // （调整记录 #29：用户反馈搜索框末尾距添加按钮太近，仅 6px flex gap → 16px）
+      '.cmd-pad-search .cmd-pad-add{',
+      '  margin-left:10px;',
+      '}',
       // ── T04：弹窗（遮罩 + 模态；弹层配方视觉规范 §2）──
       '.cmd-pad-overlay{',
       '  position:fixed;',
