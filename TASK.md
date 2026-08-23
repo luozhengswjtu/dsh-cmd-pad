@@ -99,15 +99,25 @@
 
 ## T05 运行（对话输入框通道）+ 危险确认（v0.1 闭环）
 
-- **状态**：⬜
+- **状态**：✅（完成日期：2026-08-23）
 - **前置**：T04
 - **内容**：「运行」= `ctx.get('conversation')` 探测 + `setDraft` 写对话输入框；通道不可用降级复制 + Toast 明示；`danger: true` 确认弹窗（完整命令原文）；保存时危险关键词提示勾选。
 - **完成定义**：
-  - [ ] 运行后输入框内容正确、不自动发送；
-  - [ ] conversation 服务缺失时降级复制 + Toast；
-  - [ ] 危险命令必须经确认弹窗才入输入框；
-  - [ ] 浏览/搜索/切换分组等任何非点击行为不触发执行。
-- **里程碑**：v0.1 功能闭环 → 打 tag `v0.1.0`。
+  - [x] 运行后输入框内容正确、不自动发送；
+  - [x] conversation 服务缺失时降级复制 + Toast；
+  - [x] 危险命令必须经确认弹窗才入输入框；
+  - [x] 浏览/搜索/切换分组等任何非点击行为不触发执行。
+- **完成证据**：
+  - 验收 harness：`dsh-cmd-pad/test/t05-run.test.mjs`（`node test/t05-run.test.mjs`）**14/14 通过**——writeComposerDraft 探测链 4 项（sessions/conversation/scope/setDraft 缺失各分支 → false、成功替换式写入原文、setDraft 抛错静默、ctx.get 缺失时 ctx 直读回退）+ DOM 交互 10 项（卡片运行按钮渲染 / 点运行写输入框原文·不自动发送·Toast「已写入输入框，回车执行」·lastUsed 刷新 / 「全部」视图语境 lastUsed 指向首个所属分组 / 危险命令确认弹窗（标题+完整命令原文 pre 块+危险样式按钮）·取消不写·确认才写 / conversation 缺失降级复制 + Toast「运行通道不可用，已复制到剪贴板」/ 剪贴板也失败 error Toast / 右键菜单运行路径（菜单项 运行/复制/编辑/删除）/ 完成定义 4：搜索·切分组·视图切换·开合抽屉不触发执行 / Toast 锚定运行按钮左侧 / 危险命令确认后运行同样刷新 lastUsed）；
+  - **回归**：t04-write-ops 25 + t03-browse-copy 30 + t03-drawer-layout 12 + t02-cluster-offset 7 + t02-data-layer 33 全过（**全套 121 项**）；`node --check` 全过；
+  - **WebBridge 真机实证**（真实浏览器，截图 `dsh-cmd-pad/test/shots/t05-run-draft.png` / `t05-danger-modal.png`）：
+    - 点「运行」→ 对话输入框 value 变为命令原文（npm test）、Toast「已写入输入框，回车执行」、**不自动发送**（文本留在输入框）；
+    - 危险命令（清理日志 `rm -rf /data/log/*`）→ 确认弹窗「运行危险命令」+ 完整命令原文等宽块 + 红色危险样式「运行」按钮；取消 → 输入框未写入；确认 → 命令原文入输入框；
+    - 右键菜单「运行」路径生效（items=[运行,复制,编辑,删除]）；
+    - 切分组/搜索等非点击行为后输入框保持为空（不触发执行）；
+    - live lastUsed 刷新：全部视图运行 proj-test → `lastUsedViewId=group:E:\KimiProGram\dshplugin`（首个所属分组，§3.4 语义正确）；
+    - 降级分支（conversation 缺失）真机无法构造（真实 GUI 恒有该服务），由 harness S5/S6 覆盖。
+- **里程碑**：v0.1 功能闭环 → 打 tag `v0.1.0`（提交号见 git tag）。
 
 ## T06 better-sidebar Tab 主形态（v0.2 起点）
 
@@ -170,10 +180,11 @@
 | 2026-08-23 | T03 | #17 **「上次使用」slot 用户定稿移除**：用户反馈「不要有上次这个标签分组了，打开就直接是这个项目上次打开的分组」——① 侧栏不再渲染「上次：xxx」标签；② 抽屉**打开时初始视图 = 上次使用的分组**（lastUsedViewId 有效时直接定位，失效回退「全部」）；③ 复制/运行刷新 lastUsedViewId 的机制保留（§3.4 刷新时机不变，只是从「标签展示」改为「打开即跳转」） | 已实现：`openDrawer` 置 `pendingInitialView` → 数据加载后 `activeView = lastUsed 有效 ? lastUsed.id : 'all'`；删除 `lastSlot` 函数与其 CSS；测试更新（B2 断言无 slot + 初始视图 = 上次分组；B6 复制后重开定位新分组；B13 失效回退全部；E16 适配），**107 项全过**；WebBridge 真机复核——lastUsed='group:常用' 重开即显示常用分组（截图 `test/shots/t03-initial-view-group.png`）、无「上次」标签；同步 README/视觉规范 §2（移除虚线框 chip 配方）；功能文档 §3.4「上次使用 slot」呈现以本记录为准（slot 交互语义保留，呈现改为打开即定位） |
 | 2026-08-23 | T03 | #18 **复制 Toast 锚定用户定稿**：用户反馈「已复制的提示就在复制按钮的左侧才对」——Toast 不再固定视口右下角，改为**锚定到被点击的复制按钮/命令块左侧**（垂直居中，视口内 clamp，左侧放不下时放右侧）；其余 Toast（保存/删除/撤销等）保持右下角 | 已实现：`createToast` 增加可选 `anchor` 参数，`positionByAnchor` 计算左侧定位；`onCopyCommand(cmdId, anchorEl)` 由内容区点击委托传入复制元素；测试 B6 增补锚定断言（style.left 为 px + right=auto），**107 项全过**；WebBridge 真机复核——toast 显示于复制按钮左侧（toast 右缘 2042 < 按钮左缘 2086、垂直对齐 188≈189、styleRight=auto），截图 `test/shots/t03-toast-anchored.png`（合成点击复制失败分支同样锚定；成功分支同路径） |
 | 2026-08-23 | T03 | #19 **Toast 停留时长用户定稿**：用户反馈「停留太久了，1s 够了」 | 普通提示（已复制/已保存/已删除等）显示时长 4s → **1s**；带操作按钮的 Toast（删除后「撤销」）保持 5s（与 5s 撤销窗口一致，保证用户来得及点撤销）；测试 107 项全过 |
+| 2026-08-23 | T05 | #20 **setDraft 写入语义落定**：功能文档 §4.2「运行 = 写入对话输入框」未明示替换 vs 追加。better-sidebar 的 appendToDraft（@引用用）是空格分隔**追加**；「运行」语义是"让 Agent 执行这条命令"，落定为**替换式**——命令原文整体进入输入框，用户回车即执行，避免与既有草稿混杂（对应完成定义「输入框内容正确」）。Toast 文案：「已写入输入框，回车执行」；降级 Toast「运行通道不可用，已复制到剪贴板」（明示原因） | 已实现并测试锁定（t05-run R2/S2/S5）；探测链契约（`ctx.get('sessions').scope(id)` → `ctx.get('conversation').input.for(actx)` → `setDraft`）对齐 better-sidebar `conversation-draft.ts`，ctx.get 缺失时回退 `ctx.sessions`/`ctx.conversation` 直读，与接入规范 §5.6 的降级链一致 |
 
 ## 已知风险登记（开工即知，随任务推进复核）
 
 1. **手写 wire format**（T01 验证）——不可用则 bundle 方案整体调整；
 2. **终端 WS 是未文档化内部协议**（T07 验证）——better-sidebar 每次升级后回归；当前快照 v0.15.1 实证可用，但 tab id 为 `terminal:<uuid>` 且须排除 `agent:` 前缀（接入规范 §3.2）；
-3. **conversation 服务探测**（T05）——`ctx.get('conversation')` 在目标 DSH 版本的可用性待实测，缺失时保底 = 复制 + Toast；
+3. **conversation 服务探测**（T05 已闭环）——`ctx.get('conversation').input.for(sessions.scope(id)).setDraft` 在目标 DSH 版本**真机实测可用**（2026-08-23，WebBridge 实证：输入框正确写入、不自动发送）；缺失时保底 = 复制 + Toast（harness S5/S6 锁定）；better-sidebar 升级后随接入规范 §5.6 回归；
 4. **皮肤令牌覆盖度**（T03 起每次目检）——玻璃皮肤的 `bg-base` 半透明问题按视觉规范 §1.1 第 5 条处理。
