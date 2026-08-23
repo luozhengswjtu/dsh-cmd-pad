@@ -16,6 +16,22 @@ dsh plugin --profile web add <本目录>
 
 装完重启 `dsh web` + 硬刷新浏览器（Ctrl+Shift+R）。
 
+## 使用说明
+
+- **打开方式**：
+  - 主形态（装了 better-sidebar）：底部/侧边面板 `+` 菜单选「命令」（位于终端与浏览器之间）；
+    或在「设置 → 侧边卡片」中确认「命令」卡片在场（id `cmd-pad:pad`，可配置「打开时定位上次使用的分组」）；
+  - 降级形态（没装 better-sidebar）：页面右下角浮动图标 → 右侧抽屉。
+- **基本操作**：分组条筛选（全部 / 项目：当前工作区 / 常驻 / ▸ 更多）→ 点击命令块或「复制」一键复制
+  （成功 Toast「已复制」，锚定按钮左侧）；`/` 聚焦搜索（命中高亮 + 计数，Esc 清空）；顶栏 `+ 添加`
+  新建命令（标题/命令/备注/危险勾选/分组多选，可当场新建分组）；右键菜单：卡片 = 复制/编辑/删除，
+  分组 = 常驻/重命名/删除；主形态下卡片「运行」= 新开专用终端直送执行（危险命令先确认、停在提示符
+  不回车，见「运行功能」）。
+- **数据与手改**：命令库在 `%USERPROFILE%\.dsh\profiles\web\cmd-pad\commands.yml`（人可手改，
+  重开面板自动生效；写操作自动 `.bak` 备份）；机器状态在 `state.json`。
+- **升级 better-sidebar 后**：必须回归 `test/t07-ws-probe.mjs` + `test/t07-run.test.mjs`
+  （终端 WS 为未文档化内部协议，见 `docs/better-sidebar-接入规范.md` §3）。
+
 ## 仓库结构
 
 ```
@@ -25,7 +41,7 @@ dsh-cmd-pad/
 ├── src/
 │   ├── index.js       # host 半：/cmd-pad/api 数据层路由（T02，零运行时依赖）
 │   └── client.js      # client 半：手写 __ModuleLoader__.load wire format（零构建）
-├── test/              # T02 验收 harness（不随 files 发布）
+├── test/              # T02–T07 验收 harness（不随 files 发布）
 └── README.md
 ```
 
@@ -81,7 +97,7 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
   Esc 清空（Esc 链：搜索 → 抽屉）；
 - **复制**：`navigator.clipboard` 优先，失败回退 `execCommand`；成功 Toast「已复制」；
   复制成功后按功能文档 §3.4 刷新「上次使用」（PUT `/api/state`，机器状态，非命令库写）；
-- **回归**：`node test/t03-browse-copy.test.mjs`（29 项：纯逻辑分组模型/消歧/搜索 +
+- **回归**：`node test/t03-browse-copy.test.mjs`（30 项：纯逻辑分组模型/消歧/搜索 +
   DOM 渲染 + 视觉规范 §6 静态检查）。
 
 ## 写操作（T04，client 半）
@@ -137,6 +153,24 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **主形态不自建浮层**：无浮动图标、无抽屉、无遮罩（外壳全由 better-sidebar 承担）；
 - **回归**：`node test/t06-main-form.test.mjs`（14 项：探测链/descriptor 字段/能力门×3/
   无浮层/react 不可用回退/HMR/组件挂载/scope 重挂/visible 门/onActivate/插件设置/Esc 链）。
+
+## 回归汇总（T08 收尾，2026-08-23）
+
+全套验收 harness **138 项全过**（`node test/<t0X>-*.test.mjs`，工作目录 `dsh-cmd-pad/`）：
+
+| harness | 项数 | 覆盖 |
+|---|---|---|
+| `t02-data-layer` | 33 | 迷你 YAML / 原子写+串行队列 / API 全链路 / 信任围栏 / yaml 动态加载 |
+| `t02-cluster-offset` | 7 | 顶栏 ✕ 与 better-sidebar 按钮簇避让（双锚点探测） |
+| `t03-drawer-layout` | 12 | 抽屉占用式推挤 + 拖拽分栏 + 持久化 |
+| `t03-browse-copy` | 30 | 分组模型/消歧/搜索 + DOM 渲染 + 视觉规范 §6 静态检查 |
+| `t04-write-ops` | 25 | 增删改/删除语境语义/撤销/重命名级联/常驻持久化 |
+| `t06-main-form` | 14 | 主形态探测链/descriptor/能力门/无浮层/React 桥接/插件设置 |
+| `t07-run` | 17 | 终端直写成功路径/危险不带 \r/降级链×4/回滚/UI |
+
+另有 `t07-ws-probe`（13 项）为**实机协议探针**（需真实 better-sidebar v0.13.1 + 运行中的 dsh web），
+每次升级 better-sidebar 后回归。真机实证（WebBridge，2026-08-23）：主形态入口/无浮层/面板内容/
+搜索/明暗切换（浅↔深令牌跟随），截图见 `test/shots/t08-*.png`。
 
 ## 开发守则
 
