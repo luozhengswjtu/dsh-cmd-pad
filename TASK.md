@@ -54,8 +54,9 @@
 - **完成证据**：
   - 验收 harness：`dsh-cmd-pad/test/t02-data-layer.test.mjs`（`node test/t02-data-layer.test.mjs`）**33/33 通过**——迷你 YAML 解析/序列化/往返/错误面 15 项、原子写+串行队列 2 项、API 全链路（真实 node:http + 模拟 cordis ctx + 真实 apply）11 项、信任围栏 3 项、yaml 动态加载 1 项、路由/边界 1 项；
   - **真实 curl 实证**（临时服务加载插件真实代码，端口 39876）：手改 yml GET 读回 ✅；PUT 后 commands.yml 内容精确正确 + `commands.yml.bak` 保留写前内容 ✅；非法 body（BOM 前缀 JSON）→ 400 且文件未动 ✅；恶意 Host / `Sec-Fetch-Site: cross-site` → 403、正常 → 200 ✅；state 两次增量 PUT 合并（含嵌套 `viewLastUsedAt`）✅；20 并发 PUT 全 ok 且最终文件恰为 1 条完整命令（无交错）✅；
-  - ESM 冒烟：`name`/`inject:['webServer']`/`apply`/`internals` 导出正常；`node --check` 全过。
-- **备注**：此步不碰页面（client.js 未动）。数据层实现要点与 curl 复核命令见 `dsh-cmd-pad/README.md`「数据层（T02）」；host 半改动需重启 `dsh web` 生效——新 GUI 上的复核由用户执行（同 T01 实测模式，见调整记录 #5）。
+  - ESM 冒烟：`name`/`inject:['webServer']`/`apply`/`internals` 导出正常；`node --check` 全过；
+  - **真实 GUI 复核**（2026-08-23，用户重启 `dsh web` 后，PID 42492）：curl 打 127.0.0.1:3080——GET 200 结构正确；PUT 落盘精确 + mtime 更新；二次 PUT 后 `.bak` 保留前次内容；非法 JSON → 400 且文件未变；恶意 Host → 403、正常 → 200。
+- **备注**：此步不碰页面（client.js 未动——重叠修复见调整记录 #6，属 T01 缺陷在 T02 阶段修复）。数据层实现要点与 curl 复核命令见 `dsh-cmd-pad/README.md`「数据层（T02）」。
 
 ## T03 抽屉只读浏览 + 复制（F2/F3/F5）
 
@@ -140,6 +141,7 @@
 | 2026-08-23 | T01 | #3 用户在本次会话明确选择「由 AI 直接实现 T01」（覆盖 #2 对本对话的协调角色限定）；AGENTS.md 已同步为「执行会话写代码、协调会话只维护账本」双会话分工 | 本会话按执行会话角色完成 `dsh-cmd-pad/` 初版（package.json / cordis.patch.yml / host 半 / client 半 / README）+ `dsh plugin --profile web add` 安装 + 静态验证；T01 标 🚧（运行时目检需重启 `dsh web` 当前 GUI 宿主，重启补验后转 ✅） |
 | 2026-08-23 | T01 | #4 用户真机实测：T01 全部完成定义通过，但发现**抽屉顶栏 ✕ 与 better-sidebar 右上角按钮簇重叠**（按钮簇 `[data-dsh-toggle-cluster]` z-index 45 > 抽屉 30，盖住 ✕） | T01 转 ✅；新增 `applyClusterOffset` 避让（挂载时探测按钮簇，右缘可见时顶栏 `padding-right = 视口宽 - 按钮簇左缘 + 8px`），`node` 模拟两场景通过；同步更新接入规范 §5.5 与视觉规范 §4.2（交互面/视觉双文档，规则 10） |
 | 2026-08-23 | T02 | #5 本会话按执行会话角色（同 #3）完成 T02 host 半数据层：三条完成定义均为 API 级、不依赖 GUI，故以「验收 harness 33/33 + 真实 curl 实证（临时服务加载真实 apply 代码）」闭环，无需重启 GUI 即可完成验证 | T02 转 ✅；host 半改动需重启 `dsh web` 生效——新 GUI 上按 README「数据层（T02）」curl 复核（手改 yml 读回 / PUT+.bak / 非法输入不破坏 / 并发）由用户执行，复核无回归即进入 T03；T03 起前端消费本 API，数据层已具备写操作地基 |
+| 2026-08-23 | T01（缺陷，T02 阶段修复） | #6 用户重启 `dsh web` 后实测：**抽屉 ✕ 仍与 better-sidebar 右上角按钮簇重叠**。排查：实际安装为 better-sidebar **v0.13.1**，按钮簇（CSS Modules 哈希类 `.nArs4W_toggleCluster`，fixed top:3px right:10px，z-index 45）**没有** `[data-dsh-toggle-cluster]` 锚点——该锚点是 v0.15.1 快照实证的；T01 的 `applyClusterOffset` 单锚点 `querySelector` 落空，避让从未生效 | 修复为**双锚点探测**（`findClusterRect`）：① `[data-dsh-toggle-cluster]`（v0.15.1+ 优先）；② `[data-dsh-better-sidebar]` 宿主内几何探测（顶部 top≤40px 且右缘贴近视口右缘的可见按钮，取最右者量其父容器）；并**每次抽屉打开时重算**（better-sidebar React 挂载时序不定）。验证：node 模拟 7 场景全过（`test/t02-cluster-offset.test.mjs`）；WebBridge 真实浏览器实证——按钮簇 right≈1697（视口 1707）、避让后 ✕(1602–1630) 与按钮簇(1637–1697) 间距 7px、overlap=false、截图 ✕ 清晰可点；同步更新接入规范 §5.5 与视觉规范 §4.2（规则 10） |
 
 ## 已知风险登记（开工即知，随任务推进复核）
 

@@ -201,20 +201,60 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * better-sidebar 角落按钮簇避让（接入规范 §5.5 / 视觉规范 §4.2）：
-     * 探测稳定锚点 [data-dsh-toggle-cluster]（z-index 45 > 抽屉 30，正常会盖住
-     * 抽屉顶栏 ✕）。当按钮簇右缘在视口内可见时，把抽屉顶栏 ✕ 左移避让，
-     * 保证两种形态并存时关闭按钮可点。
+     * better-sidebar 角落按钮簇避让（接入规范 §5.5 / 视觉规范 §4.2）。
+     *
+     * 背景（实测，见 TASK.md 调整记录 #6）：按钮簇 z-index 45 > 抽屉 30，
+     * 常驻右上角（top:3px right:10px），会盖住抽屉顶栏 ✕。T01 仅探测
+     * `[data-dsh-toggle-cluster]`——该锚点是 v0.15.1 快照实证的，实际安装的
+     * v0.13.1 没有此属性，避让从未生效（重叠复现）。
+     *
+     * 修复：双锚点探测 + 打开时重算。
+     *   1) `[data-dsh-toggle-cluster]`（v0.15.1+ 专用锚点，升级后仍优先）；
+     *   2) `[data-dsh-better-sidebar]` 宿主（v0.13.x）：宿主内几何探测——
+     *      顶部（top ≤ 40px）且右缘贴近视口右缘（innerWidth-120 内）的可见
+     *      `<button>`，取最右者；按钮簇 fixed top:3px right:10px，而面板内
+     *      tabBar 按钮右缘被其自身 `padding-right:72px` 让位更靠左，故「最右」
+     *      近似按钮簇；极端误判只会让避让过宽（不重叠），可接受。
+     *   3) 调用时机：挂载时一次 + **每次抽屉打开时重算**（better-sidebar 是
+     *      React 挂载，与插件 apply 时序不定，打开时探测最可靠）。
+     * 仅在按钮簇右缘真实落在视口内时避让。
      * 注意：这是「better-sidebar 在场但 cmd-pad 走降级」的过渡态处理；
      * T06 主形态下 cmd-pad 不自建浮层，本函数不再需要。
      */
+    function findClusterRect() {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return null
+      // 锚点 1：v0.15.1+ 专用 data 锚点
+      var direct = document.querySelector('[data-dsh-toggle-cluster]')
+      if (direct !== null && typeof direct.getBoundingClientRect === 'function') {
+        var r0 = direct.getBoundingClientRect()
+        if (r0.width > 0 && r0.right <= window.innerWidth && r0.right >= 0) return r0
+      }
+      // 锚点 2：v0.13.x 宿主内几何探测
+      var host = document.querySelector('[data-dsh-better-sidebar]')
+      if (host === null || typeof host.querySelectorAll !== 'function') return null
+      var buttons = host.querySelectorAll('button')
+      var cluster = null
+      for (var i = 0; i < buttons.length; i++) {
+        var r = buttons[i].getBoundingClientRect()
+        if (r.width <= 0 || r.height <= 0) continue
+        if (r.top < 0 || r.top > 40) continue
+        if (r.right < window.innerWidth - 120 || r.right > window.innerWidth) continue
+        if (cluster === null || r.right > cluster.right) cluster = { left: r.left, right: r.right, el: buttons[i] }
+      }
+      if (cluster === null) return null
+      // 优先量按钮簇容器（按钮的父元素）——比单按钮更精确
+      var parent = cluster.el.parentElement
+      if (parent !== null) {
+        var pr = parent.getBoundingClientRect()
+        if (pr.width > 0 && pr.right <= window.innerWidth && pr.right >= 0) return pr
+      }
+      return cluster
+    }
+
     function applyClusterOffset(drawer) {
       if (typeof document === 'undefined' || typeof window === 'undefined') return
-      var cluster = document.querySelector('[data-dsh-toggle-cluster]')
-      if (cluster === null || typeof cluster.getBoundingClientRect !== 'function') return
-      var rect = cluster.getBoundingClientRect()
-      // 仅在按钮簇右缘真实落在视口内（右上角可见）时避让；面板展开态不可见则不避让
-      if (rect.width <= 0 || rect.right > window.innerWidth || rect.right < 0) return
+      var rect = findClusterRect()
+      if (rect === null) return
       var head = drawer.querySelector('.cmd-pad-drawer-head')
       if (head !== null) {
         // ✕ 右缘推到按钮簇左缘左侧 8px：padding-right = 视口宽 - 按钮簇左缘 + 8
@@ -235,6 +275,8 @@ window.__ModuleLoader__.load({
         var fab = createFab(function onToggle() {
           var open = drawer.getAttribute('data-open') === 'true'
           drawer.setAttribute('data-open', open ? 'false' : 'true')
+          // 打开时重算避让（better-sidebar 挂载时序不定，此时必然已挂载）
+          if (!open) applyClusterOffset(drawer)
         })
         var drawer = createDrawer(function onClose() {
           drawer.setAttribute('data-open', 'false')

@@ -200,12 +200,16 @@ if (bs.features.includes('pluginSettings')) { // v0.12.0+：settings.pluginToggl
 4. 降级形态（探测不到 `betterSidebar`）：浮动图标 + 非模态右侧抽屉，无蒙层；关闭途径 =
    Esc / 顶栏 ✕ / 再点浮动图标。
 5. better-sidebar 在场但探测失败的极端场景（T06 前过渡期 / 服务探测失败的降级过渡态）：
-   - 浮动图标右偏移避让其角落按钮簇（`[data-dsh-toggle-cluster]` 锚点，视觉规范 §4.2）；
-   - **抽屉顶栏 ✕ 同样左移避让**（T01 实测：按钮簇 z-index 45 > 抽屉 30，会盖住 ✕）。
-     实现：client 挂载时探测 `document.querySelector('[data-dsh-toggle-cluster]')`，当按钮簇
-     右缘真实落在视口内（右上角可见）时，给抽屉顶栏 `padding-right` 置为
-     `视口宽 - 按钮簇左缘 + 8px`，把 ✕ 推到按钮簇左侧；无按钮簇或不可见时不设置
-     （见 `dsh-cmd-pad/src/client.js` 的 `applyClusterOffset`）。T06 主形态下 cmd-pad 不自建浮层，
+   - 浮动图标默认右下角，与右上角按钮簇天然不重叠（无右偏移需求）；
+   - **抽屉顶栏 ✕ 左移避让**（T01 实测：按钮簇 z-index 45 > 抽屉 30，fixed top:3px right:10px，
+     会盖住 ✕）。实现为**双锚点探测**（`dsh-cmd-pad/src/client.js` 的 `findClusterRect`）：
+     ① `[data-dsh-toggle-cluster]`（v0.15.1+ 专用锚点；**v0.13.x 没有此属性**，T01 单锚点
+     实现因此在 v0.13.1 上失效，见 TASK.md 调整记录 #6）；
+     ② 缺省在 `[data-dsh-better-sidebar]` 宿主内几何探测——顶部（top≤40px）且右缘贴近视口
+     右缘（innerWidth-120 内）的可见 `<button>`，取最右者、量其父容器（按钮簇）；
+     按钮簇右缘真实落在视口内时，给抽屉顶栏 `padding-right` 置为 `视口宽 - 按钮簇左缘 + 8px`，
+     把 ✕ 推到按钮簇左侧。调用时机：**挂载时 + 每次抽屉打开时重算**（better-sidebar 为 React
+     挂载，与插件 apply 时序不定，打开时探测最可靠）。T06 主形态下 cmd-pad 不自建浮层，
      此避让逻辑不再需要。
 6. 任一运行通道失败 → 写对话输入框（`ctx.get('conversation')` 探测，`setDraft`）→ 复制 + Toast。
 
