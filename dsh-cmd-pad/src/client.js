@@ -118,6 +118,26 @@ window.__ModuleLoader__.load({
       '  font-size:12px;',
       '  -webkit-app-region:no-drag;',
       '}',
+      // 拖拽分栏把手（左缘，col-resize；拖动中禁用过渡，避免 margin/宽度跟不上指针）
+      '.cmd-pad-drawer-resize{',
+      '  position:absolute;',
+      '  top:0;',
+      '  bottom:0;',
+      '  left:-4px;',
+      '  width:8px;',
+      '  cursor:col-resize;',
+      '  touch-action:none;',
+      '  z-index:2;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-drawer-resize:hover,',
+      '.cmd-pad-drawer[data-dragging] .cmd-pad-drawer-resize{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '}',
+      '.cmd-pad-drawer[data-dragging]{',
+      '  transition:none;',
+      '  user-select:none;',
+      '}',
     ].join('\n')
 
     function ensureStyle() {
@@ -285,6 +305,98 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /** 抽屉宽度偏好（localStorage 持久化；多标签页同源共享）。 */
+    var WIDTH_STORAGE_KEY = 'dsh-cmd-pad:drawerWidth'
+    var DRAWER_MIN_WIDTH = 280
+
+    function drawerMaxWidth() {
+      if (typeof window === 'undefined') return 360
+      // 上限：92vw（对齐 CSS 默认）且为主内容至少留 320px
+      return Math.max(DRAWER_MIN_WIDTH, Math.min(window.innerWidth * 0.92, window.innerWidth - 320))
+    }
+
+    function loadDrawerWidth() {
+      try {
+        if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+          var raw = window.localStorage.getItem(WIDTH_STORAGE_KEY)
+          if (raw !== null) {
+            var w = Number(raw)
+            if (typeof w === 'number' && isFinite(w) && w >= DRAWER_MIN_WIDTH && w <= window.innerWidth) return w
+          }
+        }
+      } catch { /* 隐私模式等：忽略，走默认 */ }
+      return Math.min(360, typeof window !== 'undefined' ? window.innerWidth * 0.92 : 360)
+    }
+
+    function persistDrawerWidth(width) {
+      try {
+        if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+          window.localStorage.setItem(WIDTH_STORAGE_KEY, String(Math.round(width)))
+        }
+      } catch { /* 隐私模式等：忽略 */ }
+    }
+
+    /** 应用宽度：inline 覆盖 CSS 默认；抽屉开着时同步推挤 #root（占用式）。 */
+    function setDrawerWidth(drawer, width) {
+      drawer.style.width = width + 'px'
+      if (drawer.getAttribute('data-open') === 'true') pushLayoutForDrawer(drawer, true)
+    }
+
+    /**
+     * 拖拽分栏（参照 better-sidebar 面板 resize，见接入规范 §5）：
+     * 抽屉左缘 8px 把手，pointer 拖动调宽，clamp [280, 92vw 且留主内容 ≥320px]；
+     * 拖动中禁 #root transition（margin 即时跟随指针），结束持久化宽度并恢复。
+     */
+    function attachResize(drawer) {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return
+      var handle = document.createElement('div')
+      handle.className = 'cmd-pad-drawer-resize'
+      handle.setAttribute('aria-hidden', 'true')
+      drawer.appendChild(handle)
+
+      var dragging = null
+      var onMove = null
+      var onUp = null
+
+      function begin(event) {
+        if (typeof event.preventDefault === 'function') event.preventDefault()
+        dragging = {
+          startX: event.clientX,
+          startWidth: drawer.getBoundingClientRect().width,
+        }
+        drawer.setAttribute('data-dragging', '')
+        var appRoot = document.getElementById('root')
+        if (appRoot !== null) appRoot.style.transition = 'none' // 拖动中 margin 即时跟随
+        onMove = function onMove(e) { move(e.clientX) }
+        onUp = function onUp() { end() }
+        document.addEventListener('pointermove', onMove)
+        document.addEventListener('pointerup', onUp)
+      }
+
+      function move(clientX) {
+        if (dragging === null) return
+        var next = dragging.startWidth + (dragging.startX - clientX)
+        if (next < DRAWER_MIN_WIDTH) next = DRAWER_MIN_WIDTH
+        var max = drawerMaxWidth()
+        if (next > max) next = max
+        setDrawerWidth(drawer, next)
+      }
+
+      function end() {
+        document.removeEventListener('pointermove', onMove)
+        document.removeEventListener('pointerup', onUp)
+        onMove = null
+        onUp = null
+        drawer.removeAttribute('data-dragging')
+        var appRoot = document.getElementById('root')
+        if (appRoot !== null) appRoot.style.removeProperty('transition')
+        if (dragging !== null) persistDrawerWidth(drawer.getBoundingClientRect().width)
+        dragging = null
+      }
+
+      handle.addEventListener('pointerdown', begin)
+    }
+
     /**
      * cordis 插件主体（client 半）。
      * T01：始终渲染降级形态；T06 起先探测 betterSidebar，
@@ -296,6 +408,9 @@ window.__ModuleLoader__.load({
 
         var root = createRoot()
         var drawer = createDrawer(closeDrawer)
+        // 初始宽度：localStorage 持久化偏好 > 默认 min(360, 92vw)
+        drawer.style.width = loadDrawerWidth() + 'px'
+        attachResize(drawer)
 
         function openDrawer() {
           drawer.setAttribute('data-open', 'true')
@@ -314,7 +429,11 @@ window.__ModuleLoader__.load({
 
         function onResize() {
           if (drawer.getAttribute('data-open') !== 'true') return
-          pushLayoutForDrawer(drawer, true)
+          // 窗口变窄时宽度可能超上限 → clamp
+          var max = drawerMaxWidth()
+          var current = drawer.getBoundingClientRect().width
+          if (current > max) setDrawerWidth(drawer, max)
+          else pushLayoutForDrawer(drawer, true)
         }
 
         var fab = createFab(function onToggle() {

@@ -203,6 +203,9 @@ if (bs.features.includes('pluginSettings')) { // v0.12.0+：settings.pluginToggl
      `margin-right: calc(var(--dsh-sidebar-width,0px) + 抽屉宽)`，主页面（含对话输入框）左移让位，
      抽屉不遮挡内容——与 better-sidebar 面板同款 layout-push；关闭/卸载移除、resize 重算；
      better-sidebar 完全不在场时同样生效（无动画但功能正确）。
+   - **拖拽分栏**（调整记录 #8）：抽屉左缘 8px 把手拖动调宽（对齐 better-sidebar 面板 resize），
+     clamp `[280, min(92vw, 视口-320)]`，拖动中 `#root` transition 禁用、宽度 localStorage
+     持久化（`dsh-cmd-pad:drawerWidth`），resize 超上限自动 clamp。
 5. better-sidebar 在场但探测失败的极端场景（T06 前过渡期 / 服务探测失败的降级过渡态）：
    - 浮动图标默认右下角，与右上角按钮簇天然不重叠（无右偏移需求）；
    - **抽屉顶栏 ✕ 左移避让**（T01 实测：按钮簇 z-index 45 > 抽屉 30，fixed top:3px right:10px，

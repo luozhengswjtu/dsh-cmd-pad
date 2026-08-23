@@ -54,6 +54,7 @@ function makeEl(tag) {
     get parentElement() { return this.parentNode },
     setAttribute(k, v) { this.attrs[k] = String(v) },
     getAttribute(k) { return this.attrs[k] !== undefined ? this.attrs[k] : null },
+    removeAttribute(k) { delete this.attrs[k] },
     appendChild(c) { c.parentNode = this; this.children.push(c); return c },
     removeChild(c) {
       const i = this.children.indexOf(c)
@@ -70,7 +71,14 @@ function makeEl(tag) {
     querySelector(sel) { return find(this, sel) },
     querySelectorAll(sel) { const acc = []; collect(this, sel, acc); return acc },
     getBoundingClientRect() {
-      return this._rect || { width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 }
+      const base = this._rect || { width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 }
+      // 浏览器语义：style.width 驱动 layout → rect.width 跟随
+      let width = base.width
+      if (this.style && typeof this.style.width === 'string') {
+        const m = /^(-?[\d.]+)px$/.exec(this.style.width)
+        if (m) width = Number(m[1])
+      }
+      return { ...base, width, right: base.left + width }
     },
     setRect(l, t, w, h) {
       this._rect = { width: w, height: h, top: t, left: l, right: l + w, bottom: t + h }
@@ -104,8 +112,17 @@ function collect(el, sel, acc) {
   return acc
 }
 
+function memoryStorage(initial) {
+  const map = new Map(Object.entries(initial || {}))
+  return {
+    getItem(k) { return map.has(k) ? map.get(k) : null },
+    setItem(k, v) { map.set(k, String(v)) },
+    removeItem(k) { map.delete(k) },
+  }
+}
+
 /** 构建独立场景：body 预置 #root（可选）→ 执行 client.js → apply(mockCtx)。 */
-function bootScene({ withAppRoot = true, innerWidth = 1200 } = {}) {
+function bootScene({ withAppRoot = true, innerWidth = 1200, storage } = {}) {
   const head = makeEl('head')
   const body = makeEl('body')
   if (withAppRoot) {
@@ -114,17 +131,23 @@ function bootScene({ withAppRoot = true, innerWidth = 1200 } = {}) {
     body.appendChild(appRoot)
   }
   const windowEvents = {}
+  const documentEvents = {}
   const documentStub = {
     head,
     body,
     getElementById(id) { return find(body, `[id="${id}"]`) },
     createElement: (tag) => makeEl(tag),
-    addEventListener() {},
-    removeEventListener() {},
+    addEventListener(t, fn) { (documentEvents[t] = documentEvents[t] || []).push(fn) },
+    removeEventListener(t, fn) {
+      const list = documentEvents[t] || []
+      const i = list.indexOf(fn)
+      if (i >= 0) list.splice(i, 1)
+    },
     querySelector(sel) { return find(body, sel) },
   }
   const windowStub = {
     innerWidth,
+    localStorage: storage ?? memoryStorage(),
     __ModuleLoader__: { load(opts) { windowStub.__loaded = opts } },
     addEventListener(t, fn) { (windowEvents[t] = windowEvents[t] || []).push(fn) },
     removeEventListener(t, fn) {
@@ -153,8 +176,11 @@ function bootScene({ withAppRoot = true, innerWidth = 1200 } = {}) {
     drawer,
     appRoot: find(body, '[id="root"]'),
     fab: find(body, '.cmd-pad-fab'),
+    resizeHandle: find(drawer, '.cmd-pad-drawer-resize'),
+    documentEvents,
     windowEvents,
     window: windowStub,
+    storage: windowStub.localStorage,
     dispose: () => { if (typeof disposer === 'function') disposer() },
   }
 }
@@ -168,8 +194,24 @@ function closeViaX(s) {
   x.listeners.click.forEach((fn) => fn())
 }
 
+function startDrag(s, clientX) {
+  s.resizeHandle.listeners.pointerdown.forEach((fn) => fn({ clientX, preventDefault() {} }))
+}
+
+function dragTo(s, clientX) {
+  ;(s.documentEvents.pointermove || []).forEach((fn) => fn({ clientX }))
+}
+
+function endDrag(s) {
+  ;(s.documentEvents.pointerup || []).forEach((fn) => fn({}))
+}
+
 function marginOf(s) {
   return s.appRoot !== null ? s.appRoot.style.marginRight : undefined
+}
+
+function widthOf(s) {
+  return s.drawer.style.width
 }
 
 // ── 场景 1：打开 → margin 推挤 ──
@@ -212,18 +254,24 @@ check('dispose → margin 恢复（抽屉开着时卸载）', () => {
   assert.strictEqual(marginOf(s), undefined)
 })
 
-// ── 场景 6：resize 时抽屉开着 → 按新宽度重算 ──
-check('resize 时抽屉开着 → 按新宽度重算', () => {
+// ── 场景 6：resize 窗口变窄 → 宽度 clamp + margin 重算 ──
+check('resize 窗口变窄 → 宽度 clamp + margin 重算', () => {
   const s = bootScene()
   clickFab(s)
-  assert.strictEqual(marginOf(s), 'calc(var(--dsh-sidebar-width, 0px) + 360px)')
-  // 模拟窗口变窄：抽屉 92vw 收缩到 300
-  s.drawer.setRect(0, 0, 300, 720)
+  // 拖到 600（innerWidth 1200 时 max=880，合法）
+  startDrag(s, 600)
+  dragTo(s, 360) // 360 + (600-360) = 600
+  endDrag(s)
+  assert.strictEqual(widthOf(s), '600px')
+  assert.strictEqual(marginOf(s), 'calc(var(--dsh-sidebar-width, 0px) + 600px)')
+  // 窗口变窄到 400：max = max(280, min(368, 80)) = 280 → clamp
+  s.window.innerWidth = 400
   s.windowEvents.resize.forEach((fn) => fn())
-  assert.strictEqual(marginOf(s), 'calc(var(--dsh-sidebar-width, 0px) + 300px)')
+  assert.strictEqual(widthOf(s), '280px')
+  assert.strictEqual(marginOf(s), 'calc(var(--dsh-sidebar-width, 0px) + 280px)')
   // 关闭后 resize 不再重算
   clickFab(s)
-  s.drawer.setRect(0, 0, 400, 720)
+  s.window.innerWidth = 1200
   s.windowEvents.resize.forEach((fn) => fn())
   assert.strictEqual(marginOf(s), undefined)
 })
@@ -235,6 +283,69 @@ check('关闭抽屉后 resize 监听卸载', () => {
   assert.strictEqual((s.windowEvents.resize || []).length, 1)
   clickFab(s)
   assert.strictEqual((s.windowEvents.resize || []).length, 0)
+})
+
+// ── 场景 8：初始宽度——无存储 → 默认 min(360, 92vw) ──
+check('初始宽度：无存储 → 默认 360（innerWidth 1200 → min(360, 1104)）', () => {
+  const s = bootScene()
+  assert.strictEqual(widthOf(s), '360px')
+})
+
+// ── 场景 9：拖拽调宽 + margin 同步 + clamp ──
+check('拖拽调宽 → 抽屉宽 + #root margin 同步，clamp 生效', () => {
+  const s = bootScene()
+  clickFab(s)
+  // 从 clientX=600 左拖 50 → 宽 410
+  startDrag(s, 600)
+  dragTo(s, 550)
+  assert.strictEqual(widthOf(s), '410px')
+  assert.strictEqual(marginOf(s), 'calc(var(--dsh-sidebar-width, 0px) + 410px)')
+  // 继续左拖 100 → 510
+  dragTo(s, 450)
+  assert.strictEqual(widthOf(s), '510px')
+  // 右拖过界 → clamp 到 min 280
+  dragTo(s, 6000)
+  assert.strictEqual(widthOf(s), '280px')
+  // 左拖过界 → clamp 到 max = min(1104, 880) = 880
+  startDrag(s, 500)
+  dragTo(s, -5000)
+  assert.strictEqual(widthOf(s), '880px')
+  endDrag(s)
+  // 拖动结束：data-dragging 移除、#root transition 恢复
+  assert.strictEqual(s.drawer.getAttribute('data-dragging'), null)
+  assert.strictEqual(s.appRoot.style.transition, undefined)
+  // 宽度持久化
+  assert.strictEqual(s.storage.getItem('dsh-cmd-pad:drawerWidth'), '880')
+})
+
+// ── 场景 10：宽度持久化 → 下次加载恢复 ──
+check('持久化宽度 → 重启（同 localStorage）后初始宽度恢复', () => {
+  const storage = memoryStorage({ 'dsh-cmd-pad:drawerWidth': '640' })
+  const s = bootScene({ storage })
+  assert.strictEqual(widthOf(s), '640px')
+})
+
+// ── 场景 11：拖拽后关闭 → margin 清除；再打开用新宽度 ──
+check('拖拽后关闭再打开 → margin 用新宽度', () => {
+  const s = bootScene()
+  clickFab(s)
+  startDrag(s, 600)
+  dragTo(s, 500) // 360 + (600-500) = 460
+  assert.strictEqual(widthOf(s), '460px')
+  endDrag(s)
+  clickFab(s) // 关闭
+  assert.strictEqual(marginOf(s), undefined)
+  clickFab(s) // 再开
+  assert.strictEqual(marginOf(s), 'calc(var(--dsh-sidebar-width, 0px) + 460px)')
+})
+
+// ── 场景 12：无 #root 时拖拽不报错 ──
+check('无 #root 时拖拽 → 宽度仍变、不报错', () => {
+  const s = bootScene({ withAppRoot: false })
+  startDrag(s, 600)
+  dragTo(s, 500) // 360 + (600-500) = 460
+  assert.strictEqual(widthOf(s), '460px')
+  endDrag(s)
 })
 
 console.log(`\n===== ${passed} passed, ${failed} failed =====`)
