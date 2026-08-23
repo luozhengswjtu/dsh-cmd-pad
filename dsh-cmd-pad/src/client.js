@@ -937,10 +937,16 @@ window.__ModuleLoader__.load({
       var agg = aggregateGroups(commands)
       var stats = groupStats(commands)
       var displayNames = disambiguateProjectNames(agg.projects)
+      // 显式自定义分组（调整记录 #38）：＋ 新建 / 取消常驻的空分组进入 state.customGroups，
+      // 空分组不参与命令聚合，若不记录则取消常驻后彻底消失——并集后仍显示在「更多」区
+      var customGroups = Array.isArray(state.customGroups) ? state.customGroups.filter(function (g) { return typeof g === 'string' && !isProjectGroup(g) }) : []
+      var customSet = {}
+      for (var ci = 0; ci < agg.custom.length; ci++) customSet[agg.custom[ci]] = true
+      for (var cj = 0; cj < customGroups.length; cj++) customSet[customGroups[cj]] = true
       // 常驻分组：pinnedGroups 中所有非项目分组（§3.3「常驻分组无命令时也显示」——
       // 不在聚合里的常驻分组同样展示，count=0，内容区空态引导）
       var pinnedCustom = pinned.filter(function (g) { return !isProjectGroup(g) })
-      var unpinnedCustom = agg.custom.filter(function (g) { return pinned.indexOf(g) === -1 }).sort()
+      var unpinnedCustom = Object.keys(customSet).filter(function (g) { return pinned.indexOf(g) === -1 }).sort()
       var otherProjects = agg.projects.filter(function (p) { return p !== cwd }).sort(function (a, b) {
         var ta = typeof viewLastUsedAt['group:' + a] === 'number' ? viewLastUsedAt['group:' + a] : 0
         var tb = typeof viewLastUsedAt['group:' + b] === 'number' ? viewLastUsedAt['group:' + b] : 0
@@ -969,7 +975,8 @@ window.__ModuleLoader__.load({
       if (viewId === 'ungrouped') return model.hasUngrouped
       if (viewId.slice(0, 6) === 'group:') {
         var name = viewId.slice(6)
-        return !!model.groupSet[name] || model.pinnedCustom.indexOf(name) !== -1
+        // 调整记录 #38：显式空分组（state.customGroups）取消常驻后仍在「更多」区 → 视图仍有效
+        return !!model.groupSet[name] || model.pinnedCustom.indexOf(name) !== -1 || model.unpinnedCustom.indexOf(name) !== -1
       }
       return false
     }
@@ -2784,7 +2791,7 @@ window.__ModuleLoader__.load({
         return model.displayNames[groupName] || groupName
       }
 
-      /** 全部分组名（含无命令的常驻分组），用于重命名冲突检测。 */
+      /** 全部分组名（含无命令的常驻分组与显式空分组），用于重命名/新建分组冲突检测。 */
       function allGroupNames() {
         var model = currentModel()
         var names = {}
@@ -2794,6 +2801,11 @@ window.__ModuleLoader__.load({
         var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups : []
         for (var i = 0; i < pinned.length; i++) {
           if (!names[pinned[i]]) names[pinned[i]] = true
+        }
+        // 调整记录 #38：显式空分组（state.customGroups）也参与冲突检测
+        var customGroups = Array.isArray(data.state.customGroups) ? data.state.customGroups : []
+        for (var j = 0; j < customGroups.length; j++) {
+          if (!names[customGroups[j]]) names[customGroups[j]] = true
         }
         return names
       }
@@ -2855,8 +2867,12 @@ window.__ModuleLoader__.load({
         if (allGroupNames()[name]) { toast('分组「' + name + '」已存在', 'error'); return }
         var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups.slice() : []
         if (pinned.indexOf(name) === -1) pinned.push(name)
+        // 调整记录 #38：同时记入显式分组名单——取消常驻后空组仍保留在「更多」，不消失
+        var customGroups = Array.isArray(data.state.customGroups) ? data.state.customGroups.slice() : []
+        if (customGroups.indexOf(name) === -1) customGroups.push(name)
         data.state.pinnedGroups = pinned
-        persistState({ pinnedGroups: pinned })
+        data.state.customGroups = customGroups
+        persistState({ pinnedGroups: pinned, customGroups: customGroups })
         hideModal()
         renderAll()
         toast('已创建分组「' + name + '」')
@@ -2989,6 +3005,16 @@ window.__ModuleLoader__.load({
                 return rest.length === 0 ? null : Object.assign({}, c, { groups: rest })
               }).filter(Boolean) })
             }, '分组已删除')
+            // 调整记录 #38：删除分组同步清理 state 中的常驻/显式分组记录（避免残留空组）
+            var pinned = Array.isArray(data.state.pinnedGroups) ? data.state.pinnedGroups.slice() : []
+            var customGroups = Array.isArray(data.state.customGroups) ? data.state.customGroups.slice() : []
+            var nextPinned = pinned.filter(function (g) { return g !== name })
+            var nextCustom = customGroups.filter(function (g) { return g !== name })
+            if (nextPinned.length !== pinned.length || nextCustom.length !== customGroups.length) {
+              data.state.pinnedGroups = nextPinned
+              data.state.customGroups = nextCustom
+              persistState({ pinnedGroups: nextPinned, customGroups: nextCustom })
+            }
           },
         }))
       }
@@ -3010,6 +3036,13 @@ window.__ModuleLoader__.load({
             data.state.pinnedGroups = nextPinned
             persistState({ pinnedGroups: nextPinned })
           }
+          // 调整记录 #38：显式分组名单同步重命名
+          var customGroups = Array.isArray(data.state.customGroups) ? data.state.customGroups : []
+          if (customGroups.indexOf(name) !== -1) {
+            var nextCustom = customGroups.map(function (g) { return g === name ? newName : g })
+            data.state.customGroups = nextCustom
+            persistState({ customGroups: nextCustom })
+          }
         }))
       }
 
@@ -3017,7 +3050,12 @@ window.__ModuleLoader__.load({
       function toggleGroupPinned(name) {
         var next = togglePinned(data.state.pinnedGroups, name)
         data.state.pinnedGroups = next
-        persistState({ pinnedGroups: next })
+        // 调整记录 #38：取消常驻的空分组（不在命令聚合里）记入 state.customGroups，
+        // 使其仍显示在「更多」区而非消失；非空分组记入也无害（模型做聚合并集去重）
+        var customGroups = Array.isArray(data.state.customGroups) ? data.state.customGroups.slice() : []
+        if (customGroups.indexOf(name) === -1) customGroups.push(name)
+        data.state.customGroups = customGroups
+        persistState({ pinnedGroups: next, customGroups: customGroups })
         renderAll()
       }
 

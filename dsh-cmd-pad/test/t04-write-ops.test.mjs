@@ -614,6 +614,41 @@ await check('E5c 新建分组校验：空名 / 重名 / 路径名拒绝；Esc �
   assert.strictEqual(modalEl(s), null, 'Esc 关闭新建分组弹窗')
 })
 
+await check('E5d 取消常驻的空分组 → 「更多」箭头出现且展开可见，不消失（调整记录 #38）', async () => {
+  const lib = { commands: [
+    { id: 'a', title: 'A', cmd: 'echo a', groups: ['common'] },
+    { id: 'b', title: 'B', cmd: 'echo b', groups: ['perf'] },
+  ] }
+  const state = { pinnedGroups: ['common', 'perf'], lastUsedViewId: '', viewLastUsedAt: {} }
+  const s = await bootScene({ library: lib, state })
+  assert.strictEqual(find(s.groupsEl, '.cmd-pad-more-toggle'), null, '初始无更多箭头（无隐藏分组）')
+  // ＋ 新建空分组（自动常驻）→ 出现在分组条
+  openAddGroup(s)
+  const input = find(modalEl(s), '.cmd-pad-form-input')
+  input.value = '部署脚本'
+  clickModalButton(s, '创建')
+  await tick()
+  assert.ok(collect(s.groupsEl, '.cmd-pad-group-row', []).some((r) => r.textContent.includes('部署脚本')), '新建后出现在分组条（常驻）')
+  // 右键取消常驻 → 「更多」箭头应出现（修复前空组彻底消失、箭头不出现）
+  openGroupMenu(s, 'group:部署脚本')
+  clickMenu(s, '取消常驻')
+  await tick()
+  const lastState = s.statePuts[s.statePuts.length - 1]
+  assert.ok(!lastState.pinnedGroups.includes('部署脚本'), 'pinnedGroups 移除该分组')
+  assert.ok(lastState.customGroups.includes('部署脚本'), 'customGroups 保留（空组不消失）')
+  const names = collect(s.groupsEl, '.cmd-pad-group-name', []).map((n) => n.textContent)
+  assert.ok(!names.includes('部署脚本'), '不再显示在常驻区')
+  const more = find(s.groupsEl, '.cmd-pad-more-toggle')
+  assert.ok(more !== null, '「更多」箭头出现（#38 修复）')
+  // 展开更多 → 可见该空分组（count=0）
+  s.groupsEl.listeners.click.forEach((fn) => fn({ target: more }))
+  const expanded = collect(s.groupsEl, '.cmd-pad-group-row', []).map((r) => r.textContent)
+  assert.ok(expanded.some((t) => t.includes('部署脚本')), '展开「更多」可见该空分组')
+  // 视图仍有效：点该分组 → 空态引导
+  clickGroup(s, 'group:部署脚本')
+  assert.strictEqual(find(s.contentEl, '.cmd-pad-empty').textContent, '该分组还没有命令')
+})
+
 await check('E6 危险关键词：输入 rm → 提示 + 自动勾选危险', async () => {
   const s = await bootScene({})
   openAdd(s)
