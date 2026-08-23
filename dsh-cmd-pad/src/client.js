@@ -8,7 +8,8 @@
  *   - 导出 apply(ctx)（cordis 插件形态），ctx.get() 可选探测可用。
  *
  * T01 范围：仅降级形态 —— 浮动图标 + 空抽屉（非模态、无蒙层、z-index 30、
- * data-dsh-cmd-pad 锚点）。主形态（better-sidebar Tab 注册）在 T06 实现，
+ * data-dsh-cmd-pad 锚点；better-sidebar 角落按钮簇在场时顶栏 ✕ 左移避让）。
+ * 主形态（better-sidebar Tab 注册）在 T06 实现，
  * 届时本文件按 ctx.get('betterSidebar') 探测分流（AGENTS.md 硬规则 1：
  * 绝不把 'betterSidebar' 写进硬 inject）。
  */
@@ -200,6 +201,28 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * better-sidebar 角落按钮簇避让（接入规范 §5.5 / 视觉规范 §4.2）：
+     * 探测稳定锚点 [data-dsh-toggle-cluster]（z-index 45 > 抽屉 30，正常会盖住
+     * 抽屉顶栏 ✕）。当按钮簇右缘在视口内可见时，把抽屉顶栏 ✕ 左移避让，
+     * 保证两种形态并存时关闭按钮可点。
+     * 注意：这是「better-sidebar 在场但 cmd-pad 走降级」的过渡态处理；
+     * T06 主形态下 cmd-pad 不自建浮层，本函数不再需要。
+     */
+    function applyClusterOffset(drawer) {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return
+      var cluster = document.querySelector('[data-dsh-toggle-cluster]')
+      if (cluster === null || typeof cluster.getBoundingClientRect !== 'function') return
+      var rect = cluster.getBoundingClientRect()
+      // 仅在按钮簇右缘真实落在视口内（右上角可见）时避让；面板展开态不可见则不避让
+      if (rect.width <= 0 || rect.right > window.innerWidth || rect.right < 0) return
+      var head = drawer.querySelector('.cmd-pad-drawer-head')
+      if (head !== null) {
+        // ✕ 右缘推到按钮簇左缘左侧 8px：padding-right = 视口宽 - 按钮簇左缘 + 8
+        head.style.paddingRight = (window.innerWidth - rect.left + 8) + 'px'
+      }
+    }
+
+    /**
      * cordis 插件主体（client 半）。
      * T01：始终渲染降级形态；T06 起先探测 betterSidebar，
      * 探测到则改走 registerTab（主形态），并跳过本浮动 UI。
@@ -226,6 +249,8 @@ window.__ModuleLoader__.load({
         root.appendChild(fab)
         root.appendChild(drawer)
         document.body.appendChild(root)
+        // better-sidebar 角落按钮簇在场时，抽屉顶栏 ✕ 左移避让（见 applyClusterOffset）
+        applyClusterOffset(drawer)
 
         return function dispose() {
           document.removeEventListener('keydown', onKeydown)

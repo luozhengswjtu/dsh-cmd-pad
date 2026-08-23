@@ -199,7 +199,14 @@ if (bs.features.includes('pluginSettings')) { // v0.12.0+：settings.pluginToggl
    明暗换肤、设置页开关卡片）全部由 better-sidebar 承担。
 4. 降级形态（探测不到 `betterSidebar`）：浮动图标 + 非模态右侧抽屉，无蒙层；关闭途径 =
    Esc / 顶栏 ✕ / 再点浮动图标。
-5. better-sidebar 在场但探测失败的极端场景：浮动图标右偏移避让其角落按钮簇。
+5. better-sidebar 在场但探测失败的极端场景（T06 前过渡期 / 服务探测失败的降级过渡态）：
+   - 浮动图标右偏移避让其角落按钮簇（`[data-dsh-toggle-cluster]` 锚点，视觉规范 §4.2）；
+   - **抽屉顶栏 ✕ 同样左移避让**（T01 实测：按钮簇 z-index 45 > 抽屉 30，会盖住 ✕）。
+     实现：client 挂载时探测 `document.querySelector('[data-dsh-toggle-cluster]')`，当按钮簇
+     右缘真实落在视口内（右上角可见）时，给抽屉顶栏 `padding-right` 置为
+     `视口宽 - 按钮簇左缘 + 8px`，把 ✕ 推到按钮簇左侧；无按钮簇或不可见时不设置
+     （见 `dsh-cmd-pad/src/client.js` 的 `applyClusterOffset`）。T06 主形态下 cmd-pad 不自建浮层，
+     此避让逻辑不再需要。
 6. 任一运行通道失败 → 写对话输入框（`ctx.get('conversation')` 探测，`setDraft`）→ 复制 + Toast。
 
 ---
