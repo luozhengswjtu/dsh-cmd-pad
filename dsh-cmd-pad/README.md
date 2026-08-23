@@ -65,6 +65,25 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **回归**：`node test/t02-data-layer.test.mjs`（33 项全过：迷你 YAML / 原子写 / API /
   并发 / 围栏）。
 
+## 浏览与复制（T03，client 半）
+
+降级抽屉内容区（主形态 T06 复用同一份内容区代码）：
+
+- **分组侧栏**（设计文档 §3.3 去图标版）：上次使用 slot（虚线框，指向失效自动隐藏）→
+  全部 → 项目：当前 cwd → 未分组（仅当存在）→ 常驻分组 → `▸ 更多（N）`（其他项目按
+  最近使用倒序 + 不常驻分组）；
+- **项目识别**：client 探测 `ctx.get('sessions')` 取当前会话 id → GET
+  `/cmd-pad/api/library?sessionId=` → host 半 `resolveSessionCwd` 回填权威 cwd；
+  多项目末段重名时带上一级路径消歧（`Temp_Code` → `docs / Temp_Code`）；
+- **命令卡片**（§4.1）：标题 + 危险 pill → 命令等宽块（点击即复制，两行截断）→ 备注 →
+  复制按钮；`danger: true` 显示「危险」徽标；
+- **全局搜索**（F5）：`/` 聚焦、命中高亮（`cmd-pad-hit`）、命中计数、分组名命中、
+  Esc 清空（Esc 链：搜索 → 抽屉）；
+- **复制**：`navigator.clipboard` 优先，失败回退 `execCommand`；成功 Toast「已复制」；
+  复制成功后按功能文档 §3.4 刷新「上次使用」（PUT `/api/state`，机器状态，非命令库写）；
+- **回归**：`node test/t03-browse-copy.test.mjs`（29 项：纯逻辑分组模型/消歧/搜索 +
+  DOM 渲染 + 视觉规范 §6 静态检查）。
+
 ## 开发守则
 
 见仓库根 `AGENTS.md` 与 `docs/`（接入规范 / 视觉风格统一规范）。

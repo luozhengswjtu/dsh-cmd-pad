@@ -1,0 +1,686 @@
+/**
+ * T03 验收 harness：抽屉只读浏览 + 复制（F2/F3/F5）
+ *
+ * 覆盖（对照 TASK.md T03 完成定义 + 设计文档 §3.2/§3.3/§3.4/§4.1/§4.4 + 视觉规范 §6）：
+ *   A. 纯逻辑（exports.testable）：项目分组判定 / 路径末段 / 消歧 / 聚合 /
+ *      分组模型排序（常驻在前、其他项目按最近使用倒序）/ 上次 slot 有效性与
+ *      失效隐藏 / 视图命令 / 搜索匹配 / 会话探测
+ *   B. DOM 渲染：侧栏结构（上次 slot、全部、项目：、常驻、▸更多）、更多展开
+ *      （其他项目 + 分组小节）、视图切换、全部视图分节、一键复制（含多行 &&、
+ *      命令块点击）、复制后「上次使用」刷新（PUT /api/state）、危险 pill、
+ *      搜索（命中过滤/计数/高亮/分组名命中/Esc 清空//聚焦）、空态
+ *   C. 视觉规范 §6 静态检查：无裸硬编码色值、无 emoji、类名全 cmd-pad- 前缀、
+ *      仅 2 处单色 SVG、innerHTML 仅用于静态 SVG、z-index 层级（30/90）
+ *
+ * 运行：node test/t03-browse-copy.test.mjs
+ */
+import { readFileSync } from 'node:fs'
+import { strict as assert } from 'node:assert'
+
+const CLIENT_SRC = readFileSync(new URL('../src/client.js', import.meta.url), 'utf8')
+
+let passed = 0
+let failed = 0
+
+async function check(name, fn) {
+  try {
+    await fn()
+    passed++
+    console.log(`  ok  ${name}`)
+  } catch (error) {
+    failed++
+    console.log(`FAIL  ${name}\n      ${String(error && error.message || error)}`)
+  }
+}
+
+// ── 最小 DOM stub（支持 T03 渲染所需：textContent 聚合 / value / focus / input 事件）──
+function makeEl(tag) {
+  return {
+    tag,
+    attrs: {},
+    children: [],
+    listeners: {},
+    className: '',
+    title: '',
+    value: '',
+    placeholder: '',
+    type: '',
+    _text: undefined,
+    _focused: false,
+    get textContent() {
+      if (this._text !== undefined) return this._text
+      return this.children.map((c) => c.textContent).join('')
+    },
+    set textContent(v) {
+      this._text = String(v)
+      this.children.length = 0 // 浏览器语义：赋值清空子节点
+    },
+    style: {
+      removeProperty(k) {
+        delete this[k]
+        const camel = k.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+        delete this[camel]
+      },
+    },
+    parentNode: null,
+    _rect: null,
+    get parentElement() { return this.parentNode },
+    setAttribute(k, v) { this.attrs[k] = String(v) },
+    getAttribute(k) { return this.attrs[k] !== undefined ? this.attrs[k] : null },
+    removeAttribute(k) { delete this.attrs[k] },
+    appendChild(c) { c.parentNode = this; this.children.push(c); return c },
+    removeChild(c) {
+      const i = this.children.indexOf(c)
+      if (i >= 0) this.children.splice(i, 1)
+      c.parentNode = null
+      return c
+    },
+    addEventListener(t, fn) { (this.listeners[t] = this.listeners[t] || []).push(fn) },
+    removeEventListener(t, fn) {
+      const list = this.listeners[t] || []
+      const i = list.indexOf(fn)
+      if (i >= 0) list.splice(i, 1)
+    },
+    querySelector(sel) { return find(this, sel) },
+    querySelectorAll(sel) { const acc = []; collect(this, sel, acc); return acc },
+    getBoundingClientRect() {
+      const base = this._rect || { width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 }
+      let width = base.width
+      if (this.style && typeof this.style.width === 'string') {
+        const m = /^(-?[\d.]+)px$/.exec(this.style.width)
+        if (m) width = Number(m[1])
+      }
+      return { ...base, width, right: base.left + width }
+    },
+    setRect(l, t, w, h) {
+      this._rect = { width: w, height: t ? h : h, top: t, left: l, right: l + w, bottom: t + h }
+    },
+    focus() { this._focused = true },
+    select() { /* noop */ },
+  }
+}
+
+function matches(el, sel) {
+  if (typeof el.getAttribute !== 'function') return false // text node
+  if (sel.startsWith('[')) {
+    const m = /^\[([^\]=]+)(?:="([^"]*)")?\]$/.exec(sel)
+    if (!m) return false
+    const v = el.getAttribute(m[1])
+    return m[2] === undefined ? v !== null : v === m[2]
+  }
+  if (sel.startsWith('.')) return typeof el.className === 'string' && el.className.split(/\s+/).includes(sel.slice(1))
+  return el.tag === sel
+}
+
+function find(el, sel) {
+  if (matches(el, sel)) return el
+  if (!el.children) return null
+  for (const c of el.children) {
+    const r = find(c, sel)
+    if (r !== null) return r
+  }
+  return null
+}
+
+function collect(el, sel, acc) {
+  if (matches(el, sel)) acc.push(el)
+  if (!el.children) return acc
+  for (const c of el.children) collect(c, sel, acc)
+  return acc
+}
+
+/** 深度优先按属性值找元素。 */
+function findAttr(el, attr, value) {
+  if (el.getAttribute && el.getAttribute(attr) === value) return el
+  if (!el.children) return null
+  for (const c of el.children) {
+    const r = findAttr(c, attr, value)
+    if (r !== null) return r
+  }
+  return null
+}
+
+function findAllAttr(el, attr, value, acc) {
+  if (el.getAttribute && (value === undefined ? el.getAttribute(attr) !== null : el.getAttribute(attr) === value)) acc.push(el)
+  if (!el.children) return acc
+  for (const c of el.children) findAllAttr(c, attr, value, acc)
+  return acc
+}
+
+function memoryStorage(initial) {
+  const map = new Map(Object.entries(initial || {}))
+  return {
+    getItem(k) { return map.has(k) ? map.get(k) : null },
+    setItem(k, v) { map.set(k, String(v)) },
+    removeItem(k) { map.delete(k) },
+  }
+}
+
+const SAMPLE_LIBRARY = {
+  commands: [
+    { id: 'top-mem', title: '查看整机内存', cmd: 'hdc shell "top -n 1 | head -30"', groups: ['perf', 'common'] },
+    { id: 'log-clean', title: '清理日志', cmd: 'rm -rf /data/log/*', groups: ['logs'], danger: true },
+    { id: 'proj-run', title: '跑测试', cmd: 'npm test', groups: ['D:\\work\\car_media'] },
+    { id: 'proj-build', title: '构建', cmd: 'npm run build', groups: ['D:\\work\\car_media', 'common'] },
+    { id: 'other-a', title: 'A 项目任务', cmd: 'echo a', groups: ['E:\\docs\\Temp_Code'] },
+    { id: 'other-b', title: 'B 项目任务', cmd: 'echo b', groups: ['D:\\other\\Temp_Code'] },
+    { id: 'multi-line', title: '多行命令', cmd: 'git add . && git commit -m "x"\ngit push', groups: ['common'] },
+  ],
+}
+const SAMPLE_STATE = {
+  pinnedGroups: ['common', 'perf'],
+  lastUsedViewId: 'group:perf',
+  viewLastUsedAt: {
+    'group:E:\\docs\\Temp_Code': 300,
+    'group:D:\\other\\Temp_Code': 100,
+    'group:perf': 500,
+  },
+}
+const SAMPLE_CWD = 'D:\\work\\car_media'
+
+async function tick() {
+  await new Promise((r) => setTimeout(r, 0))
+  await new Promise((r) => setTimeout(r, 0))
+}
+
+/** 构建独立场景：预置 #root → 执行 client.js → apply(mockCtx) → 打开抽屉 → 等待数据加载。 */
+async function bootScene(opts = {}) {
+  const head = makeEl('head')
+  const body = makeEl('body')
+  const appRoot = makeEl('div')
+  appRoot.setAttribute('id', 'root')
+  body.appendChild(appRoot)
+
+  const windowEvents = {}
+  const documentEvents = {}
+  const fetchCalls = []
+  const statePuts = []
+  const clipboardTexts = []
+  const libraryPayload = {
+    ok: true,
+    library: opts.library !== undefined ? opts.library : SAMPLE_LIBRARY,
+    state: opts.state !== undefined ? opts.state : SAMPLE_STATE,
+    cwd: opts.cwd !== undefined ? opts.cwd : SAMPLE_CWD,
+    mtime: 123,
+  }
+
+  const documentStub = {
+    head,
+    body,
+    getElementById(id) { return find(body, `[id="${id}"]`) },
+    createElement: (tag) => makeEl(tag),
+    createTextNode: (text) => ({ nodeType: 3, textContent: String(text), parentNode: null }),
+    addEventListener(t, fn) { (documentEvents[t] = documentEvents[t] || []).push(fn) },
+    removeEventListener(t, fn) {
+      const list = documentEvents[t] || []
+      const i = list.indexOf(fn)
+      if (i >= 0) list.splice(i, 1)
+    },
+    querySelector(sel) { return find(body, sel) },
+    execCommand() { return false },
+  }
+
+  const windowStub = {
+    innerWidth: 1200,
+    localStorage: memoryStorage(),
+    navigator: {
+      clipboard: {
+        writeText(t) {
+          clipboardTexts.push(String(t))
+          return Promise.resolve()
+        },
+      },
+    },
+    fetch(url, init) {
+      fetchCalls.push({ url, init })
+      if (init && init.method === 'PUT') {
+        statePuts.push(JSON.parse(init.body))
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) })
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(libraryPayload) })
+    },
+    __ModuleLoader__: { load(o) { windowStub.__loaded = o } },
+    addEventListener(t, fn) { (windowEvents[t] = windowEvents[t] || []).push(fn) },
+    removeEventListener(t, fn) {
+      const list = windowEvents[t] || []
+      const i = list.indexOf(fn)
+      if (i >= 0) list.splice(i, 1)
+    },
+  }
+
+  // eslint-disable-next-line no-new-func
+  new Function('window', 'document', CLIENT_SRC)(windowStub, documentStub)
+  const factory = windowStub.__loaded.factory
+  const moduleExports = factory(() => { throw new Error('require should not be used') })
+  let disposer = null
+  const sessionId = opts.sessionId || ''
+  const ctx = {
+    effect(fn) {
+      const d = fn()
+      if (typeof d === 'function') disposer = d
+      return d
+    },
+    get(name) {
+      if (name === 'sessions' && sessionId !== '') {
+        return { list: { getSnapshot: () => ({ current: sessionId, byId: {} }) } }
+      }
+      return undefined
+    },
+  }
+  moduleExports.apply(ctx)
+  const drawer = find(body, '.cmd-pad-drawer')
+  drawer.setRect(0, 0, 360, 720)
+  const s = {
+    body,
+    drawer,
+    fab: find(body, '.cmd-pad-fab'),
+    groupsEl: find(drawer, '.cmd-pad-groups'),
+    contentEl: find(drawer, '.cmd-pad-content'),
+    searchInput: find(drawer, '.cmd-pad-search-input'),
+    documentEvents,
+    windowEvents,
+    window: windowStub,
+    storage: windowStub.localStorage,
+    fetchCalls,
+    statePuts,
+    clipboardTexts,
+    moduleExports,
+    dispose: () => { if (typeof disposer === 'function') disposer() },
+  }
+  s.fab.listeners.click.forEach((fn) => fn())
+  await tick()
+  return s
+}
+
+function clickGroup(s, viewId) {
+  let row = findAttr(s.groupsEl, 'data-view-id', viewId)
+  if (row === null) {
+    // 目标行可能在折叠的「更多」里（不常驻分组/其他项目）：先展开
+    const more = find(s.groupsEl, '.cmd-pad-more-toggle')
+    if (more !== null) {
+      s.groupsEl.listeners.click.forEach((fn) => fn({ target: more }))
+      row = findAttr(s.groupsEl, 'data-view-id', viewId)
+    }
+  }
+  assert.ok(row !== null, `分组行 data-view-id=${viewId} 应存在`)
+  s.groupsEl.listeners.click.forEach((fn) => fn({ target: row }))
+}
+
+function cardIds(s) {
+  return findAllAttr(s.contentEl, 'data-cmd-id', undefined, []).map((c) => c.getAttribute('data-cmd-id'))
+}
+
+function clickCardButton(s, cmdId) {
+  const card = findAttr(s.contentEl, 'data-cmd-id', cmdId)
+  assert.ok(card !== null, `卡片 ${cmdId} 应存在`)
+  const actions = card.children.find((c) => c.className === 'cmd-pad-card-actions')
+  assert.ok(actions !== undefined, `卡片 ${cmdId} 应有操作行`)
+  const btn = actions.children[0]
+  assert.ok(btn !== undefined, `卡片 ${cmdId} 应有复制按钮`)
+  s.contentEl.listeners.click.forEach((fn) => fn({ target: btn }))
+}
+
+function clickCmdBlock(s, cmdId) {
+  const card = findAttr(s.contentEl, 'data-cmd-id', cmdId)
+  const block = findAttr(card, 'data-copy-cmd', '')
+  assert.ok(block !== null, `卡片 ${cmdId} 应有命令块`)
+  s.contentEl.listeners.click.forEach((fn) => fn({ target: block }))
+}
+
+function typeSearch(s, text) {
+  s.searchInput.value = text
+  s.searchInput.listeners.input.forEach((fn) => fn())
+}
+
+function pressEsc(s) {
+  s.documentEvents.keydown.forEach((fn) => fn({ key: 'Escape', preventDefault() {} }))
+}
+
+function pressSlash(s, target) {
+  s.documentEvents.keydown.forEach((fn) => fn({ key: '/', target: target || s.body, preventDefault() {} }))
+}
+
+/** 分组行语义文本 = 前缀 + 名字（不含计数；浏览器中计数 span 与名字分开布局）。 */
+function groupRowSemanticText(row) {
+  const prefix = row.children.find((c) => c.className === 'cmd-pad-group-prefix')
+  const name = row.children.find((c) => c.className === 'cmd-pad-group-name')
+  return (prefix ? prefix.textContent : '') + (name ? name.textContent : '')
+}
+
+function groupRowTexts(s) {
+  return collect(s.groupsEl, '.cmd-pad-group-row', []).map(groupRowSemanticText)
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// A. 纯逻辑（exports.testable）
+// ════════════════════════════════════════════════════════════════════════
+
+const testableOf = async (opts) => (await bootScene(opts)).moduleExports.testable
+
+await check('A1 isProjectGroup：盘符 / UNC / POSIX 判定', async () => {
+  const t = await testableOf({})
+  assert.strictEqual(t.isProjectGroup('D:\\work\\car_media'), true)
+  assert.strictEqual(t.isProjectGroup('D:/work/car_media'), true)
+  assert.strictEqual(t.isProjectGroup('\\\\server\\share\\proj'), true)
+  assert.strictEqual(t.isProjectGroup('/home/user/proj'), true)
+  assert.strictEqual(t.isProjectGroup('性能采集'), false)
+  assert.strictEqual(t.isProjectGroup('常用'), false)
+})
+
+await check('A2 pathBase / pathParents：Windows 与 POSIX 通吃', async () => {
+  const t = await testableOf({})
+  assert.strictEqual(t.pathBase('D:\\work\\car_media'), 'car_media')
+  assert.strictEqual(t.pathBase('/home/user/proj'), 'proj')
+  assert.deepStrictEqual(t.pathParents('D:\\work\\car_media'), ['D:', 'work'])
+  assert.deepStrictEqual(t.pathParents('/home/user/proj'), ['home', 'user'])
+  assert.deepStrictEqual(t.pathParents('car_media'), [])
+})
+
+await check('A3 消歧：末段唯一直接用末段；重名带上一级路径', async () => {
+  const t = await testableOf({})
+  const single = t.disambiguateProjectNames(['D:\\work\\car_media'])
+  assert.strictEqual(single['D:\\work\\car_media'], 'car_media')
+  const dup = t.disambiguateProjectNames(['E:\\docs\\Temp_Code', 'D:\\other\\Temp_Code'])
+  assert.strictEqual(dup['E:\\docs\\Temp_Code'], 'docs / Temp_Code')
+  assert.strictEqual(dup['D:\\other\\Temp_Code'], 'other / Temp_Code')
+})
+
+await check('A4 aggregateGroups：自定义 / 项目 / 未分组分类', async () => {
+  const t = await testableOf({})
+  const agg = t.aggregateGroups([
+    { groups: ['perf', 'common'] },
+    { groups: ['D:\\work\\x'] },
+    { groups: [] },
+    { groups: ['common'] },
+  ])
+  assert.deepStrictEqual(agg.custom, ['perf', 'common'])
+  assert.deepStrictEqual(agg.projects, ['D:\\work\\x'])
+  assert.strictEqual(agg.hasUngrouped, true)
+  const agg2 = t.aggregateGroups([{ groups: ['a'] }, { groups: ['a', 'b'] }])
+  assert.deepStrictEqual(agg2.custom, ['a', 'b'])
+  assert.strictEqual(agg2.hasUngrouped, false)
+})
+
+await check('A5 buildGroupModel：常驻在前、不常驻名字序、其他项目按最近使用倒序', async () => {
+  const t = await testableOf({})
+  const m = t.buildGroupModel(SAMPLE_LIBRARY, SAMPLE_STATE, SAMPLE_CWD)
+  assert.deepStrictEqual(m.pinnedCustom, ['common', 'perf']) // pinnedGroups 顺序
+  assert.deepStrictEqual(m.unpinnedCustom, ['logs'])
+  assert.deepStrictEqual(m.otherProjects, ['E:\\docs\\Temp_Code', 'D:\\other\\Temp_Code']) // 300 在 100 前
+  assert.strictEqual(m.moreCount, 3) // 2 其他项目 + 1 不常驻分组
+  assert.strictEqual(m.displayNames[SAMPLE_CWD], 'car_media')
+  assert.strictEqual(m.displayNames['E:\\docs\\Temp_Code'], 'docs / Temp_Code')
+  assert.strictEqual(m.countByGroup.common, 3)
+  assert.strictEqual(m.hasUngrouped, false)
+  assert.deepStrictEqual(m.lastUsed, { id: 'group:perf', label: '上次：perf' })
+})
+
+await check('A6 computeLastUsed：指向失效视图（分组删除）→ 隐藏', async () => {
+  const t = await testableOf({})
+  const m = t.buildGroupModel(SAMPLE_LIBRARY, SAMPLE_STATE, SAMPLE_CWD)
+  assert.strictEqual(t.computeLastUsed({ lastUsedViewId: 'group:不存在的组' }, m), null)
+  assert.strictEqual(t.computeLastUsed({ lastUsedViewId: 'all' }, m), null)
+  assert.strictEqual(t.computeLastUsed({ lastUsedViewId: 'current-project' }, m).id, 'current-project')
+  assert.strictEqual(t.computeLastUsed({ lastUsedViewId: 'current-project' }, { ...m, cwd: null }), null)
+})
+
+await check('A7 isValidView / commandsForView：视图命令归属', async () => {
+  const t = await testableOf({})
+  const m = t.buildGroupModel(SAMPLE_LIBRARY, SAMPLE_STATE, SAMPLE_CWD)
+  assert.strictEqual(t.isValidView('all', m), true)
+  assert.strictEqual(t.isValidView('current-project', m), true)
+  assert.strictEqual(t.isValidView('group:perf', m), true)
+  assert.strictEqual(t.isValidView('group:gone', m), false)
+  assert.strictEqual(t.isValidView('ungrouped', m), false)
+  assert.deepStrictEqual(
+    t.commandsForView(SAMPLE_LIBRARY.commands, 'current-project', SAMPLE_CWD).map((c) => c.id),
+    ['proj-run', 'proj-build'],
+  )
+  assert.deepStrictEqual(t.commandsForView(SAMPLE_LIBRARY.commands, 'group:perf', SAMPLE_CWD).map((c) => c.id), ['top-mem'])
+  assert.deepStrictEqual(
+    t.commandsForView([{ id: 'x', groups: [] }], 'ungrouped', SAMPLE_CWD).map((c) => c.id),
+    ['x'],
+  )
+})
+
+await check('A8 searchMatches：字段命中 + 分组名命中', async () => {
+  const t = await testableOf({})
+  const cmd = { title: '查看整机内存', cmd: 'hdc shell "top -n 1"', note: '先看水位', tags: ['内存', 'top'], groups: ['perf', 'common'] }
+  assert.strictEqual(t.searchMatches(cmd, '内存').hit, true)
+  assert.strictEqual(t.searchMatches(cmd, 'hdc').hit, true)
+  assert.strictEqual(t.searchMatches(cmd, '水位').hit, true)
+  assert.strictEqual(t.searchMatches(cmd, 'perf').hit, true) // 分组名命中
+  assert.strictEqual(t.searchMatches(cmd, 'zzz').hit, false)
+  assert.strictEqual(t.searchMatches(cmd, '内存').title, true)
+  assert.strictEqual(t.searchMatches(cmd, 'hdc').body, true)
+})
+
+await check('A9 getCurrentSessionId：探测 sessions 取 current；无服务返回空', async () => {
+  const t = await testableOf({ sessionId: 'sess-1' })
+  // bootScene 的 ctx.get('sessions') 返回 stub，仅当 sessionId 非空
+  const direct = t.getCurrentSessionId({ get: () => ({ list: { getSnapshot: () => ({ current: 'sess-9', byId: {} }) } }) })
+  assert.strictEqual(direct, 'sess-9')
+  assert.strictEqual(t.getCurrentSessionId({ get: () => undefined }), '')
+  assert.strictEqual(t.getCurrentSessionId({}), '')
+})
+
+// ════════════════════════════════════════════════════════════════════════
+// B. DOM 渲染
+// ════════════════════════════════════════════════════════════════════════
+
+await check('B1 打开抽屉 → fetch /cmd-pad/api/library 一次，带 sessionId', async () => {
+  const s = await bootScene({ sessionId: 'sess-42' })
+  assert.strictEqual(s.fetchCalls.length, 1)
+  assert.ok(s.fetchCalls[0].url.startsWith('/cmd-pad/api/library'))
+  assert.ok(s.fetchCalls[0].url.includes('sessionId=sess-42'))
+  assert.strictEqual(s.drawer.getAttribute('data-open'), 'true')
+})
+
+await check('B2 侧栏结构：上次 slot / 全部 / 项目： / 常驻分组 / ▸更多', async () => {
+  const s = await bootScene({})
+  const rows = groupRowTexts(s)
+  assert.deepStrictEqual(rows, ['全部', '项目：car_media', 'common', 'perf'])
+  const slot = find(s.groupsEl, '.cmd-pad-last-slot')
+  assert.ok(slot !== null, '应有上次使用 slot')
+  assert.strictEqual(slot.textContent, '上次：perf')
+  const more = find(s.groupsEl, '.cmd-pad-more-toggle')
+  assert.ok(more !== null, '应有 ▸更多')
+  assert.strictEqual(more.textContent, '▸ 更多（3）')
+  // 默认视图 = 全部
+  assert.ok(findAttr(s.groupsEl, 'data-view-id', 'all').getAttribute('data-active') === 'true')
+})
+
+await check('B3 更多展开 → 其他项目（消歧名 + 最近使用倒序）与分组小节', async () => {
+  const s = await bootScene({})
+  const more = find(s.groupsEl, '.cmd-pad-more-toggle')
+  s.groupsEl.listeners.click.forEach((fn) => fn({ target: more }))
+  const rows = groupRowTexts(s)
+  // 顶层行不变
+  assert.deepStrictEqual(rows.slice(0, 4), ['全部', '项目：car_media', 'common', 'perf'])
+  // 小节标题
+  const sections = collect(s.groupsEl, '.cmd-pad-more-section', []).map((x) => x.textContent)
+  assert.deepStrictEqual(sections, ['其他项目', '分组'])
+  // 更多内行：其他项目（最近使用倒序：E 300 前于 D 100）+ 不常驻分组
+  assert.deepStrictEqual(rows.slice(4), ['docs / Temp_Code', 'other / Temp_Code', 'logs'])
+  // 折叠计数：2 其他项目 + 1 不常驻分组 = 3
+  assert.strictEqual(find(s.groupsEl, '.cmd-pad-more-toggle').textContent, '▾ 更多')
+})
+
+await check('B4 视图切换：点「项目：car_media」→ 只显示该项目命令', async () => {
+  const s = await bootScene({})
+  clickGroup(s, 'current-project')
+  assert.deepStrictEqual(cardIds(s), ['proj-run', 'proj-build'])
+  assert.ok(findAttr(s.groupsEl, 'data-view-id', 'current-project').getAttribute('data-active') === 'true')
+  clickGroup(s, 'group:perf')
+  assert.deepStrictEqual(cardIds(s), ['top-mem'])
+  // 无未分组命令 → 侧栏无「未分组」行
+  assert.strictEqual(findAttr(s.groupsEl, 'data-view-id', 'ungrouped'), null)
+})
+
+await check('B5 全部视图分节：节标题 + 计数（当前项目 → 其他项目 → 常驻 → 不常驻）', async () => {
+  const s = await bootScene({})
+  const titles = collect(s.contentEl, '.cmd-pad-section-title', []).map((t) => t.textContent)
+  assert.deepStrictEqual(titles, ['car_media2', 'docs / Temp_Code1', 'other / Temp_Code1', 'common3', 'perf1', 'logs1'])
+  // 未分组节不存在（无未分组命令）
+  assert.strictEqual(titles.some((t) => t.startsWith('未分组')), false)
+})
+
+await check('B6 一键复制：命令原样进剪贴板（含多行 &&）+ Toast + 上次使用刷新', async () => {
+  const s = await bootScene({})
+  clickCardButton(s, 'multi-line')
+  await tick()
+  assert.deepStrictEqual(s.clipboardTexts, ['git add . && git commit -m "x"\ngit push'])
+  const toast = find(s.body, '.cmd-pad-toast')
+  assert.strictEqual(toast.getAttribute('data-show'), 'true')
+  assert.strictEqual(toast.textContent, '已复制')
+  // 上次使用刷新：全部视图复制 → 指向命令第一个分组 group:common；PUT /api/state 已发
+  assert.strictEqual(s.statePuts.length, 1)
+  assert.strictEqual(s.statePuts[0].lastUsedViewId, 'group:common')
+  assert.ok(typeof s.statePuts[0].viewLastUsedAt['group:common'] === 'number')
+  // slot 即时更新：data.state.lastUsedViewId 已同步（重渲染后 slot 显示 上次：common）
+  const slot = find(s.groupsEl, '.cmd-pad-last-slot')
+  assert.ok(slot !== null, '复制后应有上次使用 slot')
+  assert.strictEqual(slot.textContent, '上次：common')
+})
+
+await check('B7 命令块点击复制：原样 + 危险命令也复制', async () => {
+  const s = await bootScene({})
+  clickGroup(s, 'group:logs')
+  clickCmdBlock(s, 'log-clean')
+  await tick()
+  assert.deepStrictEqual(s.clipboardTexts, ['rm -rf /data/log/*'])
+  assert.strictEqual(find(s.body, '.cmd-pad-toast').getAttribute('data-show'), 'true')
+})
+
+await check('B8 危险 pill：仅 danger 命令显示「危险」', async () => {
+  const s = await bootScene({})
+  clickGroup(s, 'group:logs')
+  const danger = collect(s.contentEl, '.cmd-pad-card-danger', [])
+  assert.strictEqual(danger.length, 1)
+  assert.strictEqual(danger[0].textContent, '危险')
+  clickGroup(s, 'all')
+  const allDanger = collect(s.contentEl, '.cmd-pad-card-danger', [])
+  assert.strictEqual(allDanger.length, 1) // 仅 log-clean
+})
+
+await check('B9 搜索：命中过滤 + 计数 + 高亮 + 分组名命中', async () => {
+  const s = await bootScene({})
+  typeSearch(s, 'rm')
+  assert.deepStrictEqual(cardIds(s), ['log-clean'])
+  const count = find(s.drawer, '.cmd-pad-search-count')
+  assert.strictEqual(count.textContent, '命中 1 条')
+  assert.ok(find(s.contentEl, '.cmd-pad-hit') !== null, '应有高亮 span')
+  typeSearch(s, 'perf') // 分组名命中
+  assert.deepStrictEqual(cardIds(s), ['top-mem'])
+  assert.strictEqual(count.textContent, '命中 1 条')
+  typeSearch(s, '不存在词')
+  assert.strictEqual(find(s.contentEl, '.cmd-pad-empty').textContent, '没有匹配的命令')
+  assert.strictEqual(count.textContent, '命中 0 条')
+})
+
+await check('B10 Esc 清空搜索 → 恢复视图；搜索态下再 Esc → 关闭抽屉', async () => {
+  const s = await bootScene({})
+  typeSearch(s, 'rm')
+  pressEsc(s)
+  assert.strictEqual(s.searchInput.value, '')
+  // 恢复全部视图内容（多分组命令跨节重复出现，去重后 7 条）
+  assert.strictEqual(new Set(cardIds(s)).size, 7)
+  // 搜索空时 Esc → 关抽屉
+  pressEsc(s)
+  assert.strictEqual(s.drawer.getAttribute('data-open'), 'false')
+})
+
+await check('B11 "/" 聚焦搜索（焦点不在输入框时）', async () => {
+  const s = await bootScene({})
+  pressSlash(s)
+  assert.strictEqual(s.searchInput._focused, true)
+})
+
+await check('B12 空态：空库提示', async () => {
+  const s = await bootScene({ library: { commands: [] }, state: {}, cwd: null })
+  assert.strictEqual(find(s.contentEl, '.cmd-pad-empty').textContent, '还没有命令，可手改 commands.yml 添加')
+  // 无 cwd → 无「项目：」行；上次 slot（current-project）隐藏
+  assert.strictEqual(findAttr(s.groupsEl, 'data-view-id', 'current-project'), null)
+})
+
+await check('B13 上次 slot 失效隐藏（指向分组已删除）', async () => {
+  const s = await bootScene({ state: { pinnedGroups: [], lastUsedViewId: 'group:gone', viewLastUsedAt: {} } })
+  assert.strictEqual(find(s.groupsEl, '.cmd-pad-last-slot'), null)
+})
+
+await check('B14 分组视图空态：常驻分组无命令', async () => {
+  const s = await bootScene({})
+  clickGroup(s, 'group:logs')
+  assert.deepStrictEqual(cardIds(s), ['log-clean'])
+  // 全部视图含未分组命令的场景
+  const s2 = await bootScene({ library: { commands: [{ id: 'orphan', title: '孤', cmd: 'x', groups: [] }] }, state: {}, cwd: null })
+  assert.ok(findAttr(s2.groupsEl, 'data-view-id', 'ungrouped') !== null)
+  clickGroup(s2, 'ungrouped')
+  assert.deepStrictEqual(cardIds(s2), ['orphan'])
+})
+
+// ════════════════════════════════════════════════════════════════════════
+// C. 视觉规范 §6 静态检查
+// ════════════════════════════════════════════════════════════════════════
+
+await check('C1 无裸硬编码色值：所有 #hex 均在 --cp-* 兜底链内', async () => {
+  const cssStart = CLIENT_SRC.indexOf('var CSS = [')
+  assert.ok(cssStart > 0, '找到 CSS 定义')
+  const cssEnd = CLIENT_SRC.indexOf('].join', cssStart)
+  const css = CLIENT_SRC.slice(cssStart, cssEnd)
+  const re = /#[0-9a-fA-F]{3,8}\b/g
+  let m
+  let bad = []
+  while ((m = re.exec(css)) !== null) {
+    const ctx = css.slice(Math.max(0, m.index - 80), m.index)
+    if (!ctx.includes('--cp-')) bad.push(m[0] + ' @ ' + css.slice(Math.max(0, m.index - 40), m.index))
+  }
+  assert.deepStrictEqual(bad, [], '裸 hex 色值：' + JSON.stringify(bad))
+  // rgba 仅允许中性投影（浮起感，不承载主题色语义）
+  const rgba = css.match(/rgba?\([^)]*\)/g) || []
+  assert.ok(rgba.length >= 1, '有投影 rgba')
+  assert.ok(rgba.every((r) => /rgba\(0,\s*0,\s*0,\s*\.25\)/.test(r)), '投影必须为中性黑 rgba(0,0,0,.25)，实际：' + JSON.stringify(rgba))
+})
+
+await check('C2 无 emoji（杂项符号/象形文字区）', async () => {
+  assert.strictEqual(/[\u{1F300}-\u{1FAFF}]/u.test(CLIENT_SRC), false)
+})
+
+await check('C3 类名全带 cmd-pad- 前缀（CSS 选择器 + className 赋值）', async () => {
+  const cssStart = CLIENT_SRC.indexOf('var CSS = [')
+  const cssEnd = CLIENT_SRC.indexOf('].join', cssStart)
+  const css = CLIENT_SRC.slice(cssStart, cssEnd)
+  const cssClasses = [...css.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1])
+  const badCss = cssClasses.filter((c) => !c.startsWith('cmd-pad-'))
+  assert.deepStrictEqual(badCss, [], 'CSS 非 cmd-pad- 类名：' + JSON.stringify(badCss))
+  const jsClasses = [...CLIENT_SRC.matchAll(/className\s*=\s*'([^']+)'/g)].map((m) => m[1])
+  const badJs = jsClasses.filter((c) => c.split(/\s+/).some((p) => p !== '' && !p.startsWith('cmd-pad-')))
+  assert.deepStrictEqual(badJs, [], 'JS className 非 cmd-pad-：' + JSON.stringify(badJs))
+  // 不引用 better-sidebar CSS Modules 哈希类名
+  assert.ok(!CLIENT_SRC.includes('nArs4W'), '不引用 better-sidebar 哈希类名')
+})
+
+await check('C4 仅 2 处单色 SVG（浮动图标 + 搜索放大镜）；innerHTML 仅用于静态 SVG', async () => {
+  const svgCount = (CLIENT_SRC.match(/<svg/g) || []).length
+  assert.strictEqual(svgCount, 2, 'SVG 数量应为 2，实际 ' + svgCount)
+  const innerHtmlAssigns = (CLIENT_SRC.match(/\.innerHTML\s*=/g) || []).length
+  assert.strictEqual(innerHtmlAssigns, 2, 'innerHTML 仅用于 FAB_SVG / SEARCH_SVG 两处静态 SVG')
+})
+
+await check('C5 z-index 层级：抽屉 30、Toast 90（视觉规范 §4.3）', async () => {
+  const cssStart = CLIENT_SRC.indexOf('var CSS = [')
+  const cssEnd = CLIENT_SRC.indexOf('].join', cssStart)
+  const css = CLIENT_SRC.slice(cssStart, cssEnd)
+  assert.ok(/\.cmd-pad-drawer\{[^}]*z-index:30/.test(css.replace(/\n/g, '')), '抽屉 z-index 30')
+  assert.ok(/\.cmd-pad-toast\{[^}]*z-index:90/.test(css.replace(/\n/g, '')), 'Toast z-index 90')
+})
+
+await check('C6 纯逻辑面导出完整（testable 钩子）', async () => {
+  const s = await bootScene({})
+  const t = s.moduleExports.testable
+  const expected = ['isProjectGroup', 'pathBase', 'pathParents', 'disambiguateProjectNames', 'aggregateGroups', 'groupStats', 'computeLastUsed', 'buildGroupModel', 'isValidView', 'commandsForView', 'searchMatches', 'allSections', 'getCurrentSessionId', 'highlightText', 'copyText']
+  for (const k of expected) assert.ok(typeof t[k] === 'function', `testable.${k} 应存在`)
+})
+
+console.log(`\n===== ${passed} passed, ${failed} failed =====`)
+process.exit(failed > 0 ? 1 : 0)
