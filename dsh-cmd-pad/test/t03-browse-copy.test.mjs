@@ -6,7 +6,7 @@
  *      分组模型排序（常驻在前、其他项目按最近使用倒序）/ 上次 slot 有效性与
  *      失效隐藏 / 视图命令 / 搜索匹配 / 会话探测
  *   B. DOM 渲染：侧栏结构（上次 slot、全部、项目：、常驻、▸更多）、更多展开
- *      （其他项目 + 分组小节）、视图切换、全部视图分节、一键复制（含多行 &&、
+ *      （其他项目小节 + 不常驻分组，无「分组」小节标题，调整记录 #26）、视图切换、全部视图分节、一键复制（含多行 &&、
  *      命令块点击）、复制后「上次使用」刷新（PUT /api/state）、危险 pill、
  *      搜索（命中过滤/计数/高亮/分组名命中/Esc 清空//聚焦）、空态
  *   C. 视觉规范 §6 静态检查：无裸硬编码色值、无 emoji、类名全 cmd-pad- 前缀、
@@ -476,20 +476,23 @@ await check('B1 打开抽屉 → fetch /cmd-pad/api/library 一次，带 session
   assert.strictEqual(s.drawer.getAttribute('data-open'), 'true')
 })
 
-await check('B2 侧栏结构：全部 / 项目： / 常驻分组 / ▸更多（无「上次使用」标签，调整记录 #17）', async () => {
+await check('B2 侧栏结构：全部 / 项目： / 常驻分组 / 更多箭头（仅图标，调整记录 #26；无「上次使用」标签，调整记录 #17）', async () => {
   const s = await bootScene({})
   const rows = groupRowTexts(s)
   assert.deepStrictEqual(rows, ['全部', '项目：car_media', 'common', 'perf'])
   assert.strictEqual(find(s.groupsEl, '.cmd-pad-last-slot'), null, '不应有上次使用 slot 标签')
   const more = find(s.groupsEl, '.cmd-pad-more-toggle')
-  assert.ok(more !== null, '应有 ▸更多')
-  assert.strictEqual(more.textContent, '▸ 更多（3）')
+  assert.ok(more !== null, '应有更多箭头')
+  // 调整记录 #26：仅箭头（无「更多」文字）；折叠态 ▸ 指向右侧隐藏内容；计数入 title
+  assert.strictEqual(more.textContent, '▸')
+  assert.strictEqual(more.getAttribute('aria-expanded'), 'false')
+  assert.ok(more.title.includes('3'), `折叠 title 应含隐藏分组计数（实际 ${more.title}）`)
   // 打开抽屉初始视图 = 上次使用的分组（lastUsedViewId=group:perf 有效）→ 内容区显示 perf 命令
   assert.deepStrictEqual(cardIds(s), ['top-mem'])
   assert.ok(findAttr(s.groupsEl, 'data-view-id', 'group:perf').getAttribute('data-active') === 'true')
 })
 
-await check('B3 更多展开 → 其他项目（消歧名 + 最近使用倒序）与分组小节', async () => {
+await check('B3 更多展开 → 其他项目（消歧名 + 最近使用倒序）+ 不常驻分组（无「分组」小节标题，调整记录 #26）', async () => {
   const s = await bootScene({})
   clickGroup(s, 'all') // 先切到全部，避免初始视图干扰
   const more = find(s.groupsEl, '.cmd-pad-more-toggle')
@@ -497,13 +500,16 @@ await check('B3 更多展开 → 其他项目（消歧名 + 最近使用倒序�
   const rows = groupRowTexts(s)
   // 顶层行
   assert.deepStrictEqual(rows.slice(0, 4), ['全部', '项目：car_media', 'common', 'perf'])
-  // 小节标题
+  // 小节标题：仅「其他项目」（「分组」标题已移除）
   const sections = collect(s.groupsEl, '.cmd-pad-more-section', []).map((x) => x.textContent)
-  assert.deepStrictEqual(sections, ['其他项目', '分组'])
+  assert.deepStrictEqual(sections, ['其他项目'])
   // 更多内行：其他项目（最近使用倒序：E 300 前于 D 100）+ 不常驻分组
   assert.deepStrictEqual(rows.slice(4), ['docs / Temp_Code', 'other / Temp_Code', 'logs'])
-  // 折叠计数：2 其他项目 + 1 不常驻分组 = 3
-  assert.strictEqual(find(s.groupsEl, '.cmd-pad-more-toggle').textContent, '▾ 更多')
+  // 折叠计数：2 其他项目 + 1 不常驻分组 = 3；展开态 ◂ 指向收起方向
+  const t = find(s.groupsEl, '.cmd-pad-more-toggle')
+  assert.strictEqual(t.textContent, '◂')
+  assert.strictEqual(t.getAttribute('aria-expanded'), 'true')
+  assert.ok(t.title.includes('收起'), `展开 title 应为收起提示（实际 ${t.title}）`)
 })
 
 await check('B4 视图切换：点「项目：car_media」→ 只显示该项目命令', async () => {

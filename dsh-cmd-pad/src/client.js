@@ -256,15 +256,17 @@ window.__ModuleLoader__.load({
       '.cmd-pad-more-toggle{',
       '  display:inline-flex;',
       '  align-items:center;',
-      '  gap:4px;',
-      '  padding:3px 8px;',
+      '  justify-content:center;',
+      '  min-width:24px;',
+      '  height:20px;',
+      '  padding:0 5px;',
       '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
       '  background:transparent;',
       '  border-radius:6px;',
       '  cursor:pointer;',
       '  color:var(--dsw-alias-label-tertiary,var(--cp-label-tertiary,#6f7278));',
-      '  font-size:12px;',
-      '  line-height:1.4;',
+      '  font-size:15px;',
+      '  line-height:1;',
       '  white-space:nowrap;',
       '  user-select:none;',
       '  -webkit-app-region:no-drag;',
@@ -1273,7 +1275,11 @@ window.__ModuleLoader__.load({
       var btn = el('button', 'cmd-pad-more-toggle')
       btn.type = 'button'
       btn.setAttribute('data-more-toggle', '')
-      btn.textContent = expanded ? '\u25be 更多' : '\u25b8 更多（' + count + '）'
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false')
+      btn.title = expanded ? '收起更多分组' : '展开更多分组（' + count + '）'
+      // 调整记录 #26：仅箭头图标（无「更多」文字与计数，计数入 title）；横向内联展开 →
+      // 方向按行业常规（VS Code 面板 »/« 式）：折叠 ▸（指向右侧隐藏内容）/ 展开 ◂（指向收起方向）
+      btn.textContent = expanded ? '\u25c2' : '\u25b8'
       return btn
     }
 
@@ -1287,7 +1293,7 @@ window.__ModuleLoader__.load({
         }
       }
       if (model.unpinnedCustom.length > 0) {
-        wrap.appendChild(el('div', 'cmd-pad-more-section', '分组'))
+        // 调整记录 #26：去掉「分组」小节标题（展开区内均为分组，标题冗余；「其他项目」小节保留以区分项目分组）
         for (var j = 0; j < model.unpinnedCustom.length; j++) {
           var g = model.unpinnedCustom[j]
           wrap.appendChild(groupRow(null, g, model.countByGroup[g], 'group:' + g, activeView === 'group:' + g))
