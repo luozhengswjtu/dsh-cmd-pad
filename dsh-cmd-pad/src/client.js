@@ -1649,10 +1649,11 @@ window.__ModuleLoader__.load({
         positionByAnchor(anchor)
         toast.setAttribute('data-show', 'true')
         if (timer !== null) clearTimeout(timer)
+        // 普通提示 1s（用户定稿 #19）；带操作按钮（撤销）的 Toast 保持 5s 与撤销窗口一致
         timer = setTimeout(function () {
           toast.removeAttribute('data-show')
           timer = null
-        }, 4000)
+        }, typeof actionLabel === 'string' && typeof onAction === 'function' ? 5000 : 1000)
       }
     }
 
