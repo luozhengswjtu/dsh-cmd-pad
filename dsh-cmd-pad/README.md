@@ -10,9 +10,22 @@ DSH Web UI 里的「测试命令行速查面板」：命令按**自定义分组 
 
 ## 安装
 
+**方式 A：npm 安装（推荐）**
+
 ```bash
-# <插件包目录> = 含 package.json 的目录（本仓库为 dsh-cmd-pad/ 子目录）
-dsh plugin --profile web add <插件包目录>
+# 1. 获取插件（npm 官方源，包名 dsh-cmd-pad）
+npm install dsh-cmd-pad
+
+# 2. 安装（<插件包目录> = node_modules/dsh-cmd-pad）
+dsh plugin --profile web add node_modules/dsh-cmd-pad
+```
+
+**方式 B：Git 克隆安装**（GitHub 发布仓库 `luozhengswjtu/dsh-cmd-pad`）：
+
+```bash
+git clone https://github.com/luozhengswjtu/dsh-cmd-pad.git
+# <插件包目录> = 含 package.json 的 dsh-cmd-pad/ 子目录
+dsh plugin --profile web add dsh-cmd-pad
 ```
 
 装完重启 `dsh web` + 硬刷新浏览器（Ctrl+Shift+R）。安装后：
