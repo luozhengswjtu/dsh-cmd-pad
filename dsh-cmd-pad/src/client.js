@@ -500,6 +500,10 @@ window.__ModuleLoader__.load({
       '.cmd-pad-toast[data-show="true"]{',
       '  opacity:1;',
       '  transform:translateY(0);',
+      // 修复（调整记录 #49）：隐藏态透传点击（pointer-events:none），
+      // **显示态必须可点击**——否则带操作按钮的 Toast（如删除后「撤销」）永远点不中，
+      // 「删除后 5 秒内可撤销」在真实浏览器中失效（测试桩不走 CSS，E10 未暴露）。
+      '  pointer-events:auto;',
       '}',
       '.cmd-pad-toast[data-kind="error"]{',
       '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
