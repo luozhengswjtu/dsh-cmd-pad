@@ -504,26 +504,136 @@ window.__ModuleLoader__.load({
       '.cmd-pad-toast[data-kind="error"]{',
       '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
       '}',
-      // ── T04→#33/#34/#35/#36：「添加命令」按钮（搜索框右侧；#36 与运行/复制/代码块统一同套小控件配方）──
+      // ── #48：「添加命令」= 分组栏下方长条较窄横条（不再放搜索行右侧）──
       '.cmd-pad-addcmd{',
       '  flex:none;',
-      '  margin-left:14px;', // 与搜索框右侧末尾的距离（叠加容器 6px gap = 总间距 20px；#34 用户要求保持距离）
-      '  height:26px;', // #37 与搜索框显式等高（用户反馈：违和感源于高度不一致）
+      '  display:block;',
+      '  margin:6px 10px 0;', // 分组栏下方，左右留 10px 内边距
+      '  height:26px;', // 较窄
       '  box-sizing:border-box;',
       '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
-      '  background:var(--dsw-alias-bg-layer-1,var(--cp-bg-layer-1,#232428));', // #36 与运行/复制/代码块同底色
+      '  background:var(--dsw-alias-bg-layer-1,var(--cp-bg-layer-1,#232428));',
       '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
       '  font-size:12px;',
       '  line-height:1;',
-      '  padding:5px 18px;', // #35 拉长（水平 18px）；垂直内边距 6px→5px（高度由 height 固定，#37）
-      '  border-radius:6px;', // 与运行/复制/代码块/搜索框统一 6px 倒角（#36 用户反馈「边框倒角和其他不一致」）
-      // 与运行/复制/代码块同款中性黑浅投影（#36 统一 .05，用户要求「和命令行代码块一样的阴影」）
+      '  border-radius:6px;',
+      // 与运行/复制/代码块同款中性黑浅投影（风格保持一致）
       '  box-shadow:0 1px 3px rgba(0,0,0,.05);',
       '  cursor:pointer;',
       '  white-space:nowrap;',
       '  -webkit-app-region:no-drag;',
       '}',
       '.cmd-pad-addcmd:hover{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '}',
+      // ── #48：内联添加命令卡片（未编辑卡片；标题/命令行必填、备注可选；✓/✕）──
+      '.cmd-pad-addcard{',
+      '  background:var(--dsw-alias-bg-base,var(--cp-bg-base,#1c1d21));',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  border-radius:8px;',
+      '  padding:8px;',
+      '  margin-bottom:8px;',
+      '  box-shadow:0 1px 3px rgba(0,0,0,.10);', // 与命令卡片同款
+      '}',
+      '.cmd-pad-addcard-input{',
+      '  display:block;',
+      '  width:100%;',
+      '  box-sizing:border-box;',
+      '  height:26px;',
+      '  padding:0 8px;',
+      '  font-size:12px;',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '  background:var(--dsw-alias-bg-layer-1,var(--cp-bg-layer-1,#232428));',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  border-radius:6px;',
+      '  outline:none;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-addcard-input:focus{',
+      '  border-color:var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
+      '}',
+      '.cmd-pad-addcard-title{ margin-bottom:6px; }',
+      '.cmd-pad-addcard-cmd{',
+      '  display:block;',
+      '  width:100%;',
+      '  box-sizing:border-box;',
+      '  min-height:56px;',
+      '  resize:vertical;',
+      '  padding:6px 8px;',
+      '  font-family:var(--ds-font-family-code, monospace);', // 命令行代码块同款等宽字体
+      '  font-size:11px;',
+      '  line-height:1.5;',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '  background:var(--dsw-alias-bg-layer-1,var(--cp-bg-layer-1,#232428));',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  border-radius:6px;',
+      '  outline:none;',
+      '  box-shadow:0 1px 3px rgba(0,0,0,.05);', // 与命令行代码块同款投影
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-addcard-cmd:focus{',
+      '  border-color:var(--dsw-alias-border-l2,var(--cp-border-l2,#3a3d44));',
+      '}',
+      '.cmd-pad-addcard-note-row{',
+      '  margin-top:6px;',
+      '  display:flex;',
+      '  align-items:center;',
+      '  gap:6px;',
+      '}',
+      '.cmd-pad-addcard-note{',
+      '  flex:1;',
+      '  min-width:0;',
+      '}',
+      '.cmd-pad-addcard-hint{',
+      '  margin-top:4px;',
+      '  min-height:0;',
+      '  font-size:11px;',
+      '  line-height:1.5;',
+      '  color:var(--dsw-alias-state-error-primary,var(--cp-state-error-primary,#f87171));',
+      '}',
+      '.cmd-pad-addcard-danger{',
+      '  flex:none;',
+      '  display:inline-flex;',
+      '  align-items:center;',
+      '  gap:4px;',
+      '  font-size:11px;',
+      '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
+      '  cursor:pointer;',
+      '  user-select:none;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      '.cmd-pad-addcard-ok, .cmd-pad-addcard-cancel{',
+      '  flex:none;',
+      '  width:26px;',
+      '  height:26px;',
+      '  padding:0;',
+      '  box-sizing:border-box;',
+      '  display:inline-flex;',
+      '  align-items:center;',
+      '  justify-content:center;',
+      '  font-size:14px;',
+      '  line-height:1;',
+      '  border-radius:6px;',
+      '  cursor:pointer;',
+      '  -webkit-app-region:no-drag;',
+      '}',
+      // ✓/✕ 克制表达（用户反馈「勾的颜色太突兀」）：不用实心 accent 底，
+      // 以深浅区分——✓ 深一档表层 + 主文字色（主确认），✕ 浅一档 + 次级文字色（次级）
+      '.cmd-pad-addcard-ok{',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  background:var(--dsw-alias-bg-layer-2,var(--cp-bg-layer-2,#2a2c33));',
+      '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
+      '}',
+      '.cmd-pad-addcard-ok:hover{',
+      '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
+      '}',
+      '.cmd-pad-addcard-cancel{',
+      '  border:1px solid var(--dsw-alias-border-l1,var(--cp-border-l1,#2e3036));',
+      '  background:var(--dsw-alias-bg-layer-1,var(--cp-bg-layer-1,#232428));',
+      '  color:var(--dsw-alias-label-secondary,var(--cp-label-secondary,#a0a3ab));',
+      '}',
+      '.cmd-pad-addcard-cancel:hover{',
       '  background:var(--dsw-alias-interactive-bg-hover,var(--cp-interactive-bg-hover,#2b2d33));',
       '  color:var(--dsw-alias-label-primary,var(--cp-label-primary,#e6e6e6));',
       '}',
@@ -1312,11 +1422,12 @@ window.__ModuleLoader__.load({
     /**
      * 面板内容骨架（T03 布局，用户定稿：搜索 → 分组横条 → 命令区，上下结构）。
      * 降级抽屉与主形态 Tab 共用同一份骨架（T06：内容区两形态 100% 复用）。
-     * 返回 { body, searchInput, searchCount, groupsEl, contentEl, clearBtn }。
+     * 调整记录 #48：「添加命令」从搜索行右侧移出，改为分组栏下方长条较窄横条。
+     * 返回 { body, searchInput, searchCount, groupsEl, contentEl, clearBtn, addCmdBtn, groupAddBtn }。
      */
     function createPanelBody(bodyClass) {
-      // 搜索栏（T03）：输入框（清空 ✕ 悬在输入框内部右侧，调整记录 #31）+ 计数 + 添加命令。
-      // 调整记录 #34：移除搜索框左侧放大镜图标；「添加命令」放搜索框右侧并保持距离。
+      // 搜索栏（T03）：输入框（清空 ✕ 悬在输入框内部右侧，调整记录 #31）+ 计数。
+      // 调整记录 #34：移除搜索框左侧放大镜图标；「添加命令」自此不再在搜索行内（#48 移至分组栏下方）。
       var search = document.createElement('div')
       search.className = 'cmd-pad-search'
 
@@ -1345,15 +1456,6 @@ window.__ModuleLoader__.load({
       searchCount.className = 'cmd-pad-search-count'
       search.appendChild(searchCount)
 
-      // 添加命令按钮（调整记录 #34：搜索框右侧，与搜索框右侧末尾保持距离）
-      var addCmdBtn = document.createElement('button')
-      addCmdBtn.type = 'button'
-      addCmdBtn.className = 'cmd-pad-addcmd'
-      addCmdBtn.textContent = '添加命令'
-      addCmdBtn.title = '添加命令'
-      addCmdBtn.setAttribute('aria-label', '添加命令')
-      search.appendChild(addCmdBtn)
-
       // 布局（用户定稿：搜索 → 分组横条 → 命令区，上下结构）
       var groupsEl = document.createElement('div')
       groupsEl.className = 'cmd-pad-groups'
@@ -1367,6 +1469,15 @@ window.__ModuleLoader__.load({
       groupAddBtn.title = '新建分组'
       groupAddBtn.setAttribute('aria-label', '新建分组')
 
+      // 添加命令（调整记录 #48）：分组栏下方长条较窄横条；仅可添加视图显示
+      // （全部 / 上次使用 不显示——以此隔离这两个视图无法添加命令）。
+      var addCmdBtn = document.createElement('button')
+      addCmdBtn.type = 'button'
+      addCmdBtn.className = 'cmd-pad-addcmd'
+      addCmdBtn.textContent = '添加命令'
+      addCmdBtn.title = '添加命令'
+      addCmdBtn.setAttribute('aria-label', '添加命令')
+
       var contentEl = document.createElement('div')
       contentEl.className = 'cmd-pad-content'
 
@@ -1374,6 +1485,7 @@ window.__ModuleLoader__.load({
       body.className = bodyClass || 'cmd-pad-drawer-body'
       body.appendChild(search)
       body.appendChild(groupsEl)
+      body.appendChild(addCmdBtn)
       body.appendChild(contentEl)
 
       return { body: body, searchInput: searchInput, searchCount: searchCount, groupsEl: groupsEl, contentEl: contentEl, clearBtn: searchClear, addCmdBtn: addCmdBtn, groupAddBtn: groupAddBtn }
@@ -2404,6 +2516,7 @@ window.__ModuleLoader__.load({
       var pendingInitialView = false // 打开/激活时待定的初始视图（上次使用分组）
       var panelVisible = true       // T06 visible 性能门（主形态：宿主 visible；降级恒 true）
       var renderDirty = false       // 不可见期间挂起的重渲染
+      var adding = false            // #48：内联添加命令卡片打开中（未编辑卡片等待填充）
 
       // ── T07 运行通道（仅主形态）：better-sidebar + scope 访问器 → 终端直写运行器 ──
       var runner = null             // { run(cmd) }；null = 无运行入口（降级形态，只复制）
@@ -2444,6 +2557,10 @@ window.__ModuleLoader__.load({
       function renderContentView() {
         clearEl(contentEl)
         var commands = data.library.commands
+        // #48：内联添加命令卡片（未编辑卡片）置于当前分组命令列表最上方
+        if (adding && searchQuery === '') {
+          contentEl.appendChild(buildAddCardEl())
+        }
         if (searchQuery !== '') {
           // 搜索态：平铺命中命令，命中数显示在搜索栏
           var hits = []
@@ -2579,6 +2696,10 @@ window.__ModuleLoader__.load({
         if (!isValidView(activeView, model)) {
           activeView = model.lastUsed !== null ? model.lastUsed.id : 'all'
         }
+        // #48：「添加命令」长条横条仅可添加视图显示（全部/上次使用不显示）
+        if (addCmdBtn !== null) {
+          addCmdBtn.style.display = canAddCommand() ? '' : 'none'
+        }
         renderGroups()
         renderContentView()
         updateSearchCount()
@@ -2642,6 +2763,8 @@ window.__ModuleLoader__.load({
       function selectView(viewId) {
         searchQuery = ''
         searchInput.value = ''
+        // #48：切换视图取消内联添加（目标分组语境已变，卡片不跟随）
+        adding = false
         activeView = viewId
         renderAll()
       }
@@ -2839,22 +2962,130 @@ window.__ModuleLoader__.load({
         return opts
       }
 
-      function openAddForm() {
-        var model = currentModel()
-        var checkedSet = {}
-        var defs = defaultCheckedGroups(activeView, model, data.state, data.cwd)
-        for (var i = 0; i < defs.length; i++) checkedSet[defs[i]] = true
-        showModal(buildFormModal({
-          mode: 'add',
-          groupOptions: groupOptions(),
-          checkedSet: checkedSet,
-          toast: toast,
-          onCancel: hideModal,
-          onSubmit: function (payload) { submitCommand(payload, null) },
-        }))
+      /** #48：内联添加命令卡片的目标分组（放弃分组选择，只取当前选中分组语境）。 */
+      function targetGroupsForView(viewId, cwd) {
+        if (viewId === 'current-project') return (cwd !== null && cwd !== undefined && cwd !== '') ? [cwd] : []
+        if (viewId === 'ungrouped') return []
+        if (typeof viewId === 'string' && viewId.slice(0, 6) === 'group:') return [viewId.slice(6)]
+        return []
       }
 
-      /** 新建分组（调整记录 #33）：分组栏右侧 ＋ → 弹窗输名 → 校验 → 自动设为常驻（空组可见）。 */
+      /** #48：当前语境是否可添加命令（全部/上次使用不可；搜索态不可）。 */
+      function canAddCommand() {
+        if (data === null) return false
+        if (searchQuery !== '') return false
+        return activeView === 'current-project' || activeView === 'ungrouped' || (typeof activeView === 'string' && activeView.slice(0, 6) === 'group:')
+      }
+
+      /** #48：内联添加命令卡片（未编辑卡片，等待用户填充；标题/命令行必填、备注可选；✓/✕）。 */
+      function buildAddCardEl() {
+        var card = el('div', 'cmd-pad-card cmd-pad-addcard')
+        var titleInput = el('input', 'cmd-pad-addcard-input cmd-pad-addcard-title')
+        titleInput.type = 'text'
+        titleInput.placeholder = '标题（必填）'
+        titleInput.setAttribute('aria-label', '标题')
+        card.appendChild(titleInput)
+        var cmdInput = el('textarea', 'cmd-pad-addcard-input cmd-pad-addcard-cmd')
+        cmdInput.placeholder = '命令行（必填）'
+        cmdInput.setAttribute('aria-label', '命令')
+        cmdInput.setAttribute('rows', '2')
+        card.appendChild(cmdInput)
+        var hint = el('div', 'cmd-pad-addcard-hint')
+        card.appendChild(hint)
+        // 备注 + 危险勾选 + ✓/✕ 同一行（危险与勾叉位于备注右侧，用户定稿）
+        var noteRow = el('div', 'cmd-pad-addcard-note-row')
+        var noteInput = el('input', 'cmd-pad-addcard-input cmd-pad-addcard-note')
+        noteInput.type = 'text'
+        noteInput.placeholder = '备注（可选）'
+        noteInput.setAttribute('aria-label', '备注')
+        noteRow.appendChild(noteInput)
+        var dangerLabel = el('label', 'cmd-pad-addcard-danger')
+        var dangerCheck = document.createElement('input')
+        dangerCheck.type = 'checkbox'
+        dangerCheck.className = 'cmd-pad-addcard-danger-check'
+        dangerLabel.appendChild(dangerCheck)
+        dangerLabel.appendChild(el('span', null, '危险命令'))
+        dangerLabel.title = '危险命令（卡片显示危险徽标；未来运行通道恢复时需二次确认）'
+        noteRow.appendChild(dangerLabel)
+        var okBtn = el('button', 'cmd-pad-btn cmd-pad-addcard-ok')
+        okBtn.type = 'button'
+        okBtn.textContent = '\u2713'
+        okBtn.title = '完成（点击卡片外也可保存）'
+        okBtn.setAttribute('aria-label', '完成')
+        noteRow.appendChild(okBtn)
+        var cancelBtn = el('button', 'cmd-pad-btn cmd-pad-addcard-cancel')
+        cancelBtn.type = 'button'
+        cancelBtn.textContent = '\u2715'
+        cancelBtn.title = '取消'
+        cancelBtn.setAttribute('aria-label', '取消')
+        noteRow.appendChild(cancelBtn)
+        card.appendChild(noteRow)
+        // 危险关键词自动勾选（同表单弹窗逻辑，设计文档 §4.3：提示 + 自动勾选，可取消）
+        cmdInput.addEventListener('input', function () {
+          var hits = dangerKeywordHits(cmdInput.value)
+          if (hits.length > 0) {
+            hint.textContent = '检测到危险关键词：' + hits.join('、') + ' —— 已勾选「危险命令」，可取消'
+            dangerCheck.checked = true
+          } else {
+            hint.textContent = ''
+          }
+        })
+        okBtn.addEventListener('click', function () {
+          submitAddCard(titleInput, cmdInput, noteInput, dangerCheck)
+        })
+        cancelBtn.addEventListener('click', function () {
+          cancelAddCard()
+        })
+        return card
+      }
+
+      /** #48：从当前渲染的卡片读取输入并提交（✓ / 点击卡片外共用）。 */
+      function submitAddCard(titleInput, cmdInput, noteInput, dangerCheck) {
+        var title = (titleInput.value || '').trim()
+        var cmdText = cmdInput.value || ''
+        if (title === '') { toast('标题不能为空', 'error'); titleInput.focus(); return }
+        if (cmdText === '') { toast('命令不能为空', 'error'); cmdInput.focus(); return }
+        submitCommand({
+          title: title,
+          cmd: cmdText,
+          note: (noteInput.value || '').trim(),
+          danger: dangerCheck.checked === true,
+          groups: targetGroupsForView(activeView, data.cwd),
+        }, null)
+      }
+
+      /** #48：点击卡片外部 = 完成创建（同 ✓；必填缺失时提示并保持编辑）。 */
+      function submitAddCardFromOutside() {
+        if (!adding) return
+        var cardNode = contentEl.querySelector('.cmd-pad-addcard')
+        if (cardNode === null) return
+        var titleIn = cardNode.querySelector('.cmd-pad-addcard-title')
+        var cmdIn = cardNode.querySelector('.cmd-pad-addcard-cmd')
+        var noteIn = cardNode.querySelector('.cmd-pad-addcard-note')
+        var dangerChk = cardNode.querySelector('.cmd-pad-addcard-danger-check')
+        if (titleIn === null || cmdIn === null || noteIn === null || dangerChk === null) return
+        submitAddCard(titleIn, cmdIn, noteIn, dangerChk)
+      }
+
+      /** #48：打开内联添加卡片（聚焦标题输入，等待填充）。 */
+      function startAddCard() {
+        if (!canAddCommand()) return
+        adding = true
+        renderAll()
+        try {
+          var first = contentEl.querySelector('.cmd-pad-addcard-title')
+          if (first !== null && typeof first.focus === 'function') first.focus()
+        } catch (error) { /* 忽略 */ }
+      }
+
+      /** #48：取消内联添加（✕ / Esc / 切换视图 / 进入搜索时）。 */
+      function cancelAddCard() {
+        if (!adding) return
+        adding = false
+        renderAll()
+      }
+
+      /** #48：新建分组（分组栏右侧 ＋ → 弹窗输名 → 校验 → 自动设为常驻（空组可见））。 */
       function openAddGroupForm() {
         showModal(buildAddGroupModal(hideModal, function (name) { submitGroup(name) }))
       }
@@ -2910,6 +3141,7 @@ window.__ModuleLoader__.load({
           }
           data.library = Object.assign({}, data.library, { commands: next })
           hideModal()
+          adding = false // #48：内联添加成功后关闭卡片
           renderAll()
           toast(editId !== null ? '已保存' : '已添加')
         })
@@ -3060,13 +3292,32 @@ window.__ModuleLoader__.load({
       }
 
       // ── 事件委托（一次绑定，随重渲染复用）──
-      // 调整记录 #33：「添加命令」= 分组条下方长条按钮；「新建分组」= 分组栏右侧 ＋
+      // 调整记录 #48：「添加命令」= 分组栏下方长条横条 → 当前分组内联卡片（不再弹窗）；
+      // 「新建分组」= 分组栏右侧 ＋（不变）
       if (addCmdBtn !== null) {
         addCmdBtn.addEventListener('click', function () {
           if (data === null) return
-          openAddForm()
+          if (adding) return // 编辑中重复点击不重开
+          startAddCard()
         })
       }
+      // #48：点击卡片外部 = 完成创建（同 ✓）。document 级监听：冒泡到达时若目标不在
+      // 卡片内、也不在「添加命令」横条上，则按当前输入提交。弹层/右键菜单/Toast 打开时
+      // 不提交（避免在这些浮层上的点击误创建）。
+      var onDocClickSubmit = function (event) {
+        if (!adding) return
+        if (modalOpen()) return
+        if (contextMenuEl !== null) return
+        var target = event !== null && event !== undefined ? event.target : undefined
+        var inToast = closestUp(target, function (n) { return n !== undefined && n !== null && n.className !== undefined && String(n.className).indexOf('cmd-pad-toast') !== -1 })
+        if (inToast !== null) return
+        var inCard = closestUp(target, function (n) { return n !== undefined && n !== null && n.className !== undefined && String(n.className).indexOf('cmd-pad-addcard') !== -1 })
+        if (inCard !== null) return
+        var onBar = closestUp(target, function (n) { return n === addCmdBtn })
+        if (onBar !== null) return
+        submitAddCardFromOutside()
+      }
+      document.addEventListener('click', onDocClickSubmit)
       if (groupAddBtn !== null) {
         groupAddBtn.addEventListener('click', function () {
           if (data === null) return
@@ -3142,6 +3393,8 @@ window.__ModuleLoader__.load({
 
       searchInput.addEventListener('input', function () {
         searchQuery = searchInput.value || ''
+        // #48：进入搜索态即取消内联添加（搜索为浏览语境，卡片关闭）
+        if (searchQuery !== '') adding = false
         renderContentView()
         updateSearchCount()
       })
@@ -3168,6 +3421,12 @@ window.__ModuleLoader__.load({
           }
           if (contextMenuEl !== null) {
             closeContextMenu()
+            if (typeof event.preventDefault === 'function') event.preventDefault()
+            return
+          }
+          // #48：内联添加卡片打开时 Esc = 取消编辑（✕ 同语义）
+          if (adding) {
+            cancelAddCard()
             if (typeof event.preventDefault === 'function') event.preventDefault()
             return
           }
@@ -3219,6 +3478,7 @@ window.__ModuleLoader__.load({
         setVisible: setVisible,
         dispose: function () {
           document.removeEventListener('keydown', onKeydown)
+          document.removeEventListener('click', onDocClickSubmit)
           if (undoState !== null && undoState.timer !== null) clearTimeout(undoState.timer)
           undoState = null
           closeContextMenu()
