@@ -178,12 +178,13 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 - **内容区 100% 复用**：主形态 Tab 与降级抽屉共用同一份内容区代码（`createCmdPadPanel`
   共享工厂：状态/渲染/搜索/写操作/事件/键盘），两形态功能完全等价；
 - **主形态不自建浮层**：无浮动图标、无抽屉、无遮罩（外壳全由 better-sidebar 承担）；
-- **回归**：`node test/t06-main-form.test.mjs`（14 项：探测链/descriptor 字段/能力门×3/
-  无浮层/react 不可用回退/HMR/组件挂载/scope 重挂/visible 门/onActivate/插件设置/Esc 链）。
+- **回归**：`node test/t06-main-form.test.mjs`（15 项：探测链/descriptor 字段/能力门×3/
+  无浮层/react 不可用回退/HMR/组件挂载/scope 重挂/visible 门/onActivate/插件设置/Esc 链/
+  **同一宿主 scope 重挂不堆积面板**（#47 修复））。
 
-## 回归汇总（T08 收尾 138 项；#28 后 150 项；#33 后 152 项；#38 后 153 项）
+## 回归汇总（T08 收尾 138 项；#28 后 150 项；#33 后 152 项；#38 后 153 项；#47 后 154 项）
 
-全套验收 harness **153 项全过**（`node test/<t0X>-*.test.mjs`，工作目录 `dsh-cmd-pad/`）：
+全套验收 harness **154 项全过**（`node test/<t0X>-*.test.mjs`，工作目录 `dsh-cmd-pad/`）：
 
 | harness | 项数 | 覆盖 |
 |---|---|---|
@@ -192,7 +193,7 @@ curl -X PUT -H "content-type: application/json" -d '{"pinnedGroups":["常用"]}'
 | `t03-drawer-layout` | 12 | 抽屉占用式推挤 + 拖拽分栏 + 持久化 |
 | `t03-browse-copy` | 38 | 分组模型/消歧/搜索/**上次使用视图（记录/范围切换/ⓘ）** + DOM 渲染 + 视觉规范 §6 静态检查 |
 | `t04-write-ops` | 28 | 增删改/删除语境语义/撤销/重命名级联/常驻持久化/**新建分组（＋ 独立入口，自动常驻/校验/取消常驻不消失）** |
-| `t06-main-form` | 14 | 主形态探测链/descriptor/能力门/无浮层/React 桥接/插件设置 |
+| `t06-main-form` | 15 | 主形态探测链/descriptor/能力门/无浮层/React 桥接/插件设置/**scope 重挂不堆积面板** |
 | `t07-run` | 21 | 终端直写成功路径/**底部栏落点/onSuccess**/危险不带 \r/降级链×4/回滚/UI |
 
 另有 `t07-ws-probe`（13 项）为**实机协议探针**（需真实 better-sidebar v0.13.1 + 运行中的 dsh web），

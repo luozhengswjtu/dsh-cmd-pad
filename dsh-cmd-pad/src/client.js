@@ -3223,6 +3223,14 @@ window.__ModuleLoader__.load({
           undoState = null
           closeContextMenu()
           hideModal()
+          // 修复（TASK.md 调整记录 #47）：scope 变化重挂 / Tab 卸载时，旧面板 body
+          // 必须从宿主容器移除。否则主形态下每次切会话（切项目）都往
+          // .cmd-pad-tab-host 追加一个 .cmd-pad-drawer-body——宿主是
+          // flex-direction:column 容器，两个 flex:1 面板上下各占一半，
+          // 表现为「命令窗口下多出一个不可调节上下比例的命令窗口」。
+          if (body !== null && body !== undefined && body.parentNode !== null) {
+            body.parentNode.removeChild(body)
+          }
         },
       }
     }
@@ -3231,11 +3239,22 @@ window.__ModuleLoader__.load({
     // cordis 插件主体（client 半）
     // T06：先探测 betterSidebar → 主形态 registerTab；否则降级浮动图标 + 抽屉
     // ════════════════════════════════════════════════════════════════════
-    /** better-sidebar 服务探测（AGENTS.md 硬规则 1：ctx.get 可选探测，绝不硬 inject）。 */
+    /**
+     * better-sidebar 服务探测（AGENTS.md 硬规则 1：可选探测，绝不硬 inject）。
+     * 注意 cordis 语境代理语义（@deepseek-ai/cordis reflect.ts）：服务未 provide 时
+     * **属性直读会抛** `cannot get property "betterSidebar" without inject`——
+     * 两路读取都必须吞异常，否则探测本身炸掉 apply，降级形态整插件加载失败
+     * （调整记录 #45：探测代码成为加载炸弹）。
+     */
     function probeBetterSidebar(ctx) {
       if (ctx === null || ctx === undefined) return undefined
-      var bs = (typeof ctx.get === 'function') ? ctx.get('betterSidebar') : undefined
-      if (bs === null || bs === undefined) bs = ctx.betterSidebar
+      var bs
+      try {
+        bs = (typeof ctx.get === 'function') ? ctx.get('betterSidebar') : undefined
+      } catch (error) { bs = undefined }
+      if (bs === null || bs === undefined) {
+        try { bs = ctx.betterSidebar } catch (error) { bs = undefined }
+      }
       return bs
     }
 
