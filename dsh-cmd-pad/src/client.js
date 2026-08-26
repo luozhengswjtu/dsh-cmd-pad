@@ -1375,6 +1375,16 @@ window.__ModuleLoader__.load({
       '</svg>',
     ].join('')
 
+    // 内联添加卡片「完成 ✓」图标（用户反馈 2026-08-2x：「勾的形状比较丑，就要最简单的，
+    // 不要小勾角的」）：两笔直折线的极简对勾（无尾钩、无装饰角），视觉规范 §3.2 同款规格。
+    var CHECK_SVG = [
+      '<svg viewBox="0 0 16 16" width="13" height="13" fill="none"',
+      '     stroke="currentColor" stroke-width="1.5"',
+      '     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+      '  <path d="M4.75 9 7.25 11.5 11.25 4.5"/>',
+      '</svg>',
+    ].join('')
+
     /** 搜索命中高亮：query 命中的子串包 <span class="cmd-pad-hit">。 */
     function highlightText(text, query) {
       text = String(text || '')
@@ -3009,7 +3019,7 @@ window.__ModuleLoader__.load({
         noteRow.appendChild(dangerLabel)
         var okBtn = el('button', 'cmd-pad-btn cmd-pad-addcard-ok')
         okBtn.type = 'button'
-        okBtn.textContent = '\u2713'
+        okBtn.innerHTML = CHECK_SVG // 极简直线对勾（用户反馈：不要 U+2713 的尾钩字形）
         okBtn.title = '完成（点击卡片外也可保存）'
         okBtn.setAttribute('aria-label', '完成')
         noteRow.appendChild(okBtn)
