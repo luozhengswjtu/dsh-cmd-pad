@@ -27,13 +27,10 @@ DSH Web UI 的**测试命令行速查面板**：把常用命令按**自定义分
 **方式 A：npm 安装（推荐）**
 
 ```bash
-# 1. 获取插件（npm 官方源）
-npm install dsh-cmd-pad
-
-# 2. 安装（<插件包目录> = node_modules/dsh-cmd-pad）
+# 1. 安装（<插件包目录> = node_modules/dsh-cmd-pad）
 dsh plugin --profile web add node_modules/dsh-cmd-pad
 
-# 3. 重启 dsh web + 浏览器硬刷新（Ctrl+Shift+R）
+# 2. 重启 dsh web + 浏览器硬刷新（Ctrl+Shift+R）
 ```
 
 **方式 B：Git 克隆安装**
